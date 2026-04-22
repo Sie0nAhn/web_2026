@@ -1,48 +1,217 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Things on the axis</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Things on the axis — 2026 서울과학기술대학교 시각디자인 졸업전시</title>
 </head>
 <body>
-    <nav>
-        <div class="nav-links">
-            <a href="#" onclick="showPage('main')">MAIN</a>
-            <a href="#" onclick="showPage('works')">WORKS</a>
-            <a href="#" onclick="showPage('booth')">BOOTH</a>
-            <a href="#" onclick="showPage('guestbook')">GUESTBOOK</a>
+
+<nav>
+  <span class="nav-logo" onclick="showPage('main')">Things on the axis</span>
+  <ul class="nav-links">
+    <li><button onclick="showPage('main')" id="nav-main" class="active">Main</button></li>
+    <li><button onclick="showPage('designer')" id="nav-designer">Designer</button></li>
+    <li><button onclick="showPage('work')" id="nav-work">Work</button></li>
+    <li><button onclick="showPage('message')" id="nav-message">Message</button></li>
+  </ul>
+</nav>
+
+<!-- MAIN -->
+<div id="page-main" class="page active">
+  <section class="hero">
+    <div class="hero-bg"><span class="hero-bg-word">axis</span></div>
+    <div class="hero-eyebrow">제44회 서울과학기술대학교 시각디자인전공 졸업전시 — The 44th Graduation Exhibition</div>
+    <h1 class="hero-title">Things on<br><em>the axis</em></h1>
+    <div class="hero-meta">
+      <div><div class="hm-label">Date</div><div class="hm-value">2026.11.06 – 11.10<br>10:00 – 20:00</div></div>
+      <div><div class="hm-label">Venue</div><div class="hm-value">서울과학기술대학교<br>백주년기념관</div></div>
+      <div><div class="hm-label">Designers</div><div class="hm-value">78명</div></div>
+    </div>
+    <div class="hero-scroll">↓ scroll</div>
+  </section>
+
+  <section class="section">
+    <div class="sec-label">00 — Concept</div>
+    <div class="concept-grid">
+      <div class="concept-ko">공사장은 단순한 미완의 공간이 아니다. 아직 완결되지 않았기에 모든 것이 가능해지는 그곳은 새로운 세계를 세우기 위한 터전이며, 무한한 잠재력을 품은 장소이기도 하다.<br><br>Things on the axis는 바로 그 가능성의 공간을 상징한다. 수많은 실험과 실패가 허용되는 유연한 창작의 현장이다.<br><br>이번 제44회 졸업전시는 완성된 작품 너머의 과도기적 여정과 그에 담긴 의미에 주목한다. 이 전시는 끝이 아닌 또 다른 공사의 시작을 알리는 신호탄이다.<br><br>이제 우리는 각자의 세계를 구축할 첫 삽을 들고, 그 출발선에 섰다.</div>
+      <div class="concept-en">A construction site is not merely an unfinished space. Its incompleteness makes it a ground where all possibilities unfold, a foundation for new worlds.<br><br>Things on the axis stands for this idea — a site where trials and failures are allowed, where uncertainty fuels new attempts.<br><br>The 44th Graduation Exhibition highlights this transitional journey, beyond finished works, toward the meaning within the process.<br><br>Now, with the first shovel in hand, we stand at the starting line.</div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="sec-label">01 — 전시 정보</div>
+    <div class="info-row">
+      <div class="info-cell"><div class="info-label">Period</div><div class="info-value">2026년<br>11월 6일 – 10일</div></div>
+      <div class="info-cell"><div class="info-label">Hours</div><div class="info-value">매일<br>10:00 – 20:00</div></div>
+      <div class="info-cell"><div class="info-label">Location</div><div class="info-value">서울과학기술대학교<br>백주년기념관</div></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="sec-label">02 — 지도교수</div>
+    <div class="prof-cols">
+      <div>
+        <div class="track-lbl">경험디자인 — Experiential Design</div>
+        <div class="prof-item"><div class="prof-kr">박승배</div><div class="prof-en">Park Seungbae</div></div>
+        <div class="prof-item"><div class="prof-kr">안미경</div><div class="prof-en">An Mikyung</div></div>
+        <div class="prof-item"><div class="prof-kr">이은실</div><div class="prof-en">Lee Eunsil</div></div>
+      </div>
+      <div>
+        <div class="track-lbl">콘텐츠 디자인 — Contents Design</div>
+        <div class="prof-item"><div class="prof-kr">노준구</div><div class="prof-en">Noh Jungu</div></div>
+        <div class="prof-item"><div class="prof-kr">박우혁</div><div class="prof-en">Park Woohyuk</div></div>
+        <div class="prof-item"><div class="prof-kr">오영재</div><div class="prof-en">Oh Youngjae</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="sec-label">03 — 준비위원회</div>
+    <div class="comm-cols">
+      <div><div class="comm-role">위원장</div><div class="comm-lead">박진아</div></div>
+      <div><div class="comm-role">부위원장</div><div class="comm-lead">최민석</div></div>
+      <div><div class="comm-role">재정팀</div><div class="comm-lead">신서애</div><div class="comm-members">박진아<br>최민석</div></div>
+      <div><div class="comm-role">DP팀</div><div class="comm-lead">서유랑</div><div class="comm-members">우지윤<br>지민<br>최민석</div></div>
+      <div><div class="comm-role">편집팀</div><div class="comm-lead">이장현</div><div class="comm-members">홍민아<br>박진아</div></div>
+      <div><div class="comm-role">홍보팀</div><div class="comm-lead">장정아</div><div class="comm-members">신서애</div></div>
+      <div><div class="comm-role">웹팀</div><div class="comm-lead">안시언</div></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0">
+    <div class="sec-label">04 — 스폰서</div>
+    <div class="sponsor-row">
+      <div class="sponsor-tag">Sponsor A</div>
+      <div class="sponsor-tag">Sponsor B</div>
+      <div class="sponsor-tag">Sponsor C</div>
+    </div>
+    <p style="font-size:11px;color:var(--g500);margin-top:16px">준비 중입니다 — Sponsors to be announced</p>
+  </section>
+
+  <footer>
+    <span>2026 ⓒ Seoul National University of Science and Technology</span>
+    <span>시각디자인전공 — Visual Communication Design</span>
+  </footer>
+</div>
+
+<!-- DESIGNER -->
+<div id="page-designer" class="page">
+  <div class="page-header">
+    <h2 class="page-title">Designer</h2>
+    <span class="page-sub">78명</span>
+  </div>
+  <div class="designer-grid" id="designer-grid"></div>
+  <footer>
+    <span>2026 ⓒ Seoul National University of Science and Technology</span>
+    <span>Visual Communication Design</span>
+  </footer>
+</div>
+
+<!-- DESIGNER DETAIL -->
+<div id="designer-detail">
+  <div class="back-bar"><button class="back-btn" onclick="showPage('designer')">← Designer 목록으로</button></div>
+  <div class="detail-strip">
+    <div class="strip-avatar">
+      <div class="big-avatar" id="dd-av"></div>
+      <div class="det-name-kr" id="dd-kr"></div>
+      <div class="det-name-en" id="dd-en"></div>
+      <div class="det-track" id="dd-track"></div>
+    </div>
+    <div class="strip-contacts">
+      <div><div class="det-info-label">Instagram</div><div class="det-info-value" id="dd-insta"></div></div>
+      <div><div class="det-info-label">Work Category</div><div class="det-info-value" id="dd-cat"></div></div>
+    </div>
+    <div class="strip-about">
+      <div class="det-info-label" style="margin-bottom:14px">About</div>
+      <div class="det-intro" id="dd-intro"></div>
+    </div>
+  </div>
+  <div class="det-works-section">
+    <div class="det-works-label">Works</div>
+    <div class="det-works-grid" id="dd-works"></div>
+  </div>
+  <footer><span>2026 ⓒ Seoul National University of Science and Technology</span></footer>
+</div>
+
+<!-- WORK -->
+<div id="page-work" class="page">
+  <div class="page-header">
+    <h2 class="page-title">Work</h2>
+    <span class="page-sub">전체 작품</span>
+  </div>
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="filterWork(this,'all')">All</button>
+    <button class="filter-btn" onclick="filterWork(this,'BX(브랜드)')">BX 브랜드</button>
+    <button class="filter-btn" onclick="filterWork(this,'CX(서비스디자인)')">CX 서비스</button>
+    <button class="filter-btn" onclick="filterWork(this,'UX/UI')">UX/UI</button>
+    <button class="filter-btn" onclick="filterWork(this,'영상')">영상</button>
+    <button class="filter-btn" onclick="filterWork(this,'일러스트')">일러스트</button>
+    <button class="filter-btn" onclick="filterWork(this,'편집')">편집</button>
+  </div>
+  <div class="booth-section">
+    <div class="sec-label">부스 배치도</div>
+    <p class="booth-note">마우스를 올리면 부스 정보를 확인할 수 있습니다.</p>
+    <div class="booth-map" id="booth-map"></div>
+  </div>
+  <div class="work-grid" id="work-grid"></div>
+  <footer>
+    <span>2026 ⓒ Seoul National University of Science and Technology</span>
+    <span>Visual Communication Design</span>
+  </footer>
+</div>
+
+<!-- WORK DETAIL -->
+<div id="work-detail">
+  <div class="back-bar"><button class="back-btn" onclick="showPage('work')">← Work 목록으로</button></div>
+  <div class="wd-hero"><div class="wd-init-txt" id="wd-init"></div></div>
+  <div class="wd-body">
+    <div class="wd-left">
+      <div class="wd-cat-tag" id="wd-cat"></div>
+      <h2 class="wd-title" id="wd-title"></h2>
+      <p class="wd-desc" id="wd-desc"></p>
+    </div>
+    <div class="wd-right">
+      <div><div class="wd-meta-label">Designer</div><div class="wd-meta-value" id="wd-by"></div></div>
+      <div><div class="wd-meta-label">Category</div><div class="wd-meta-value" id="wd-cat2"></div></div>
+      <div><div class="wd-meta-label">Year</div><div class="wd-meta-value">2026</div></div>
+      <button class="wd-dlink" id="wd-dlink">→ 디자이너 페이지 보기</button>
+    </div>
+  </div>
+  <footer><span>2026 ⓒ Seoul National University of Science and Technology</span></footer>
+</div>
+
+<!-- MESSAGE -->
+<div id="page-message" class="page">
+  <div class="page-header">
+    <h2 class="page-title">Message</h2>
+    <span class="page-sub">방명록 — Guestbook</span>
+  </div>
+  <div class="msg-form">
+    <div class="msg-inputs">
+      <div>
+        <div class="msg-label">이름 / Name</div>
+        <div class="msg-row">
+          <input type="text" id="msg-name" placeholder="이름을 입력하세요">
+          <input type="text" id="msg-affil" placeholder="소속 (선택)">
         </div>
-    </nav>
-
-    <div id="page-main" class="page active">
-        <section class="hero">
-            <h1>Things on the axis</h1>
-            <p>2026 Visual Design Graduation Exhibition</p>
-        </section>
-        <div id="designer-grid" class="grid-container"></div>
+      </div>
+      <div>
+        <div class="msg-label">메시지 / Message</div>
+        <textarea id="msg-text" rows="3" placeholder="응원의 메시지를 남겨주세요"></textarea>
+      </div>
     </div>
+    <button class="msg-submit" onclick="submitMsg()">남기기</button>
+  </div>
+  <div class="msg-list" id="msg-list"></div>
+  <footer>
+    <span>2026 ⓒ Seoul National University of Science and Technology</span>
+    <span>Visual Communication Design</span>
+  </footer>
+</div>
 
-    <div id="page-works" class="page">
-        <div class="filter-bar">
-            <button class="filter-btn active" onclick="filterWorks('all', this)">ALL</button>
-            <button class="filter-btn" onclick="filterWorks('Graphic', this)">GRAPHIC</button>
-            <button class="filter-btn" onclick="filterWorks('Media', this)">MEDIA</button>
-            <button class="filter-btn" onclick="filterWorks('Product', this)">PRODUCT</button>
-        </div>
-        <div id="works-list" class="works-container"></div>
-    </div>
-
-    <div id="page-booth" class="page">
-        <div id="booth-content"></div>
-    </div>
-
-    <div id="page-guestbook" class="page">
-        <div id="guestbook-content"></div>
-    </div>
-
-    <script src="main.js"></script>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="main.js"></script>
 </body>
 </html>
