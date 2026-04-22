@@ -1,6 +1,6 @@
 let DESIGNERS = []; // 기존 하드코딩 배열 삭제, 빈 배열로 시작
 
-// 1. CSV 데이터 불러오기
+// 1. CSV 데이터 불러오기 (중복 인물 병합 로직 적용)
 window.addEventListener('DOMContentLoaded', () => {
     fetch('2026_web.csv')
         .then(response => {
@@ -12,21 +12,38 @@ window.addEventListener('DOMContentLoaded', () => {
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    // 2. CSV 데이터를 선생님의 원본 구조(kr, en, track 등)에 맞게 완벽하게 변환
-                    DESIGNERS = results.data.map((row, index) => ({
-                        id: index,
-                        kr: row['이름'] || '',
-                        en: row['영문이름'] || '',
-                        track: row['트랙'] || '',
-                        insta: row['인스타그램'] || '',
-                        intro: row['한마디'] || '',
-                        // 원본 코드에서 작품 정보를 배열로 관리하므로 이 구조도 동일하게 맞춰줍니다.
-                        works: [
-                            { workTitle: row['작품명'] || '', category: row['트랙'] || '' }
-                        ]
+                    // 2. 디자이너 이름(kr)을 기준으로 데이터 그룹화
+                    const groupedDesigners = {};
+
+                    results.data.forEach(row => {
+                        const krName = row['이름'] || '';
+
+                        // 아직 등록되지 않은 디자이너라면 새 객체 생성 (CSV 헤더명에 맞게 키값 수정 완료)
+                        if (!groupedDesigners[krName]) {
+                            groupedDesigners[krName] = {
+                                kr: krName,
+                                en: row['영어 이름'] || '',
+                                track: row['트랙'] || '',
+                                insta: row['인스타'] || '',
+                                intro: row['한줄 소개'] || '',
+                                works: [] // 작품을 담을 빈 배열 생성
+                            };
+                        }
+
+                        // 해당 디자이너의 works 배열에 작품 추가
+                        groupedDesigners[krName].works.push({
+                            workTitle: row['작품명'] || '',
+                            category: row['카테고리'] || ''
+                        });
+                    });
+
+                    // 3. 그룹화된 객체를 다시 배열로 변환하고 순차적인 id 재부여
+                    DESIGNERS = Object.values(groupedDesigners).map((designer, index) => ({
+                        id: index, // 0부터 다시 고유 ID 부여
+                        ...designer
                     }));
 
-                    // 3. 데이터가 다 로드된 후 화면 렌더링
+                    // 4. 데이터가 다 로드된 후 화면 렌더링
                     renderGrid();
                     renderWorks('all');
                     renderBooth();
