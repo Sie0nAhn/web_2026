@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Things on the axis | 졸업전시회</title>
+    <title>Things on the axis</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
@@ -27,20 +27,20 @@
 
     <div id="page-works" class="page">
         <div class="filter-bar">
-            <button onclick="renderWorks('all')">ALL</button>
-            <button onclick="renderWorks('Graphic')">GRAPHIC</button>
-            <button onclick="renderWorks('Media')">MEDIA</button>
-            <button onclick="renderWorks('Product')">PRODUCT</button>
+            <button class="filter-btn active" onclick="filterWorks('all', this)">ALL</button>
+            <button class="filter-btn" onclick="filterWorks('Graphic', this)">GRAPHIC</button>
+            <button class="filter-btn" onclick="filterWorks('Media', this)">MEDIA</button>
+            <button class="filter-btn" onclick="filterWorks('Product', this)">PRODUCT</button>
         </div>
         <div id="works-list" class="works-container"></div>
     </div>
 
     <div id="page-booth" class="page">
-        <div id="booth-map" class="booth-container"></div>
+        <div id="booth-content"></div>
     </div>
 
     <div id="page-guestbook" class="page">
-        <div id="guestbook-list" class="msg-container"></div>
+        <div id="guestbook-content"></div>
     </div>
 
     <script src="main.js"></script>
