@@ -232,7 +232,7 @@
     <div class="hero-meta">
       <div><div class="hm-label">Date</div><div class="hm-value">2026.11.06 – 11.10<br>10:00 – 20:00</div></div>
       <div><div class="hm-label">Venue</div><div class="hm-value">서울과학기술대학교<br>백주년기념관</div></div>
-      <div><div class="hm-label">Designers</div><div class="hm-value">57명</div></div>
+      <div><div class="hm-label">Designers</div><div class="hm-value">78명</div></div>
     </div>
     <div class="hero-scroll">↓ scroll</div>
   </section>
@@ -377,13 +377,12 @@
   </div>
   <div class="filter-row">
     <button class="filter-btn active" onclick="filterWork(this,'all')">All</button>
-    <button class="filter-btn" onclick="filterWork(this,'브랜딩')">브랜딩</button>
-    <button class="filter-btn" onclick="filterWork(this,'타이포그래피')">타이포그래피</button>
-    <button class="filter-btn" onclick="filterWork(this,'모션그래픽')">모션그래픽</button>
+    <button class="filter-btn" onclick="filterWork(this,'BX(브랜드)')">BX 브랜드</button>
+    <button class="filter-btn" onclick="filterWork(this,'CX(서비스디자인)')">CX 서비스</button>
     <button class="filter-btn" onclick="filterWork(this,'UX/UI')">UX/UI</button>
-    <button class="filter-btn" onclick="filterWork(this,'일러스트레이션')">일러스트레이션</button>
-    <button class="filter-btn" onclick="filterWork(this,'패키지')">패키지</button>
-    <button class="filter-btn" onclick="filterWork(this,'편집디자인')">편집디자인</button>
+    <button class="filter-btn" onclick="filterWork(this,'영상')">영상</button>
+    <button class="filter-btn" onclick="filterWork(this,'일러스트')">일러스트</button>
+    <button class="filter-btn" onclick="filterWork(this,'편집')">편집</button>
   </div>
   <div class="booth-section">
     <div class="sec-label">부스 배치도</div>
@@ -553,18 +552,23 @@ async function connectSheet() {
 }
 
 async function tryAutoLoad() {
-  document.getElementById('d-loading').style.display = 'block';
+  // 내장 CSV 데이터로 즉시 렌더링 — 네트워크 불필요
+  designers = fallback;
   document.getElementById('sheet-banner').style.display = 'none';
-  try {
-    designers = await loadSheet(SHEET_CSV_URL);
-    console.log(`✓ 시트 연동 완료 — ${designers.length}명`);
-  } catch (e) {
-    console.warn('시트 로드 실패:', e.message, '— fallback 사용');
-    designers = fallback;
-    document.getElementById('sheet-banner').style.display = 'block';
-  }
   document.getElementById('d-loading').style.display = 'none';
   renderAll();
+
+  // 구글 시트 최신 데이터로 백그라운드 업데이트 (실패해도 내장 데이터 유지)
+  try {
+    const updated = await loadSheet(SHEET_CSV_URL);
+    if (updated && updated.length) {
+      designers = updated;
+      console.log(`✓ 시트 실시간 동기화 — ${updated.length}명`);
+      renderAll();
+    }
+  } catch (e) {
+    console.log('시트 동기화 생략 (내장 데이터 사용 중)');
+  }
 }
 
 // ════ RENDER ════
@@ -584,19 +588,27 @@ function renderGrid() {
 }
 
 function renderWorks(cat) {
-  const list = cat==='all' ? designers : designers.filter(d=>d.category===cat);
-  document.getElementById('work-grid').innerHTML = list.map((d,i) => `
-    <div class="work-card" onclick="openWork(${designers.indexOf(d)})">
+  // 모든 작품을 펼쳐서 보여줌 (디자이너당 여러 작품)
+  const allWorks = [];
+  designers.forEach((d, dIdx) => {
+    const worksArr = d.works && d.works.length ? d.works : [{workTitle: d.workTitle, category: d.category}];
+    worksArr.forEach((w, wIdx) => {
+      if (cat === 'all' || w.category === cat) {
+        allWorks.push({d, dIdx, w, wIdx});
+      }
+    });
+  });
+  document.getElementById('work-grid').innerHTML = allWorks.map(({d, dIdx, w, wIdx}) => `
+    <div class="work-card" onclick="openWorkDirect(${dIdx},${wIdx})">
       <div class="work-thumb">
         <div class="wt-init">${(d.kr||'?')[0]}</div>
-        <div class="work-tag">${d.category||''}</div>
+        <div class="work-tag">${w.category||''}</div>
       </div>
       <div class="work-info">
-        <div class="work-title">${d.workTitle||'—'}</div>
+        <div class="work-title">${w.workTitle||'—'}</div>
         <div class="work-by">${d.kr||''} · ${(d.en||'').split(' ')[0]}</div>
       </div>
     </div>`).join('');
-}
 
 function renderBooth() {
   document.getElementById('booth-map').innerHTML = designers.slice(0,48).map((d,i) => `
@@ -626,33 +638,44 @@ function openDesigner(idx) {
   document.getElementById('dd-track').textContent = d.track||'';
   document.getElementById('dd-email').textContent = d.email||'—';
   document.getElementById('dd-insta').textContent = d.insta||'—';
-  document.getElementById('dd-cat').textContent   = d.category||'—';
+  // 카테고리: 작품이 여러 개면 모두 표시
+  const cats = d.works ? [...new Set(d.works.map(w=>w.category))].join(' · ') : (d.category||'—');
+  document.getElementById('dd-cat').textContent = cats;
   document.getElementById('dd-intro').textContent = d.intro||'';
-  document.getElementById('dd-works').innerHTML = `
-    <div class="work-card" onclick="openWork(${idx})" style="max-width:360px">
+
+  // 작품 여러 개 렌더링
+  const worksData = d.works && d.works.length ? d.works : [{workTitle: d.workTitle||'—', category: d.category||''}];
+  document.getElementById('dd-works').innerHTML = worksData.map((w, wi) => `
+    <div class="work-card" onclick="openWorkDirect(${idx},${wi})">
       <div class="work-thumb"><div class="wt-init">${(d.kr||'?')[0]}</div>
-        <div class="work-tag">${d.category||''}</div></div>
+        <div class="work-tag">${w.category||''}</div></div>
       <div class="work-info">
-        <div class="work-title">${d.workTitle||'—'}</div>
-        <div class="work-by">${d.category||''} · 2026</div>
+        <div class="work-title">${w.workTitle||'—'}</div>
+        <div class="work-by">${w.category||''} · 2026</div>
       </div>
-    </div>`;
+    </div>`).join('');
   window.scrollTo(0,0);
 }
 
-function openWork(idx) {
-  const d = designers[idx]; if (!d) return;
+function openWorkDirect(dIdx, wIdx) {
+  const d = designers[dIdx]; if (!d) return;
+  const worksData = d.works && d.works.length ? d.works : [{workTitle: d.workTitle, category: d.category}];
+  const w = worksData[wIdx] || worksData[0];
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('designer-detail').classList.remove('active');
   document.getElementById('work-detail').classList.add('active');
   document.getElementById('wd-init').textContent  = (d.kr||'?')[0];
-  document.getElementById('wd-cat').textContent   = d.category||'';
-  document.getElementById('wd-title').textContent = d.workTitle||'—';
+  document.getElementById('wd-cat').textContent   = w.category||'';
+  document.getElementById('wd-title').textContent = w.workTitle||'—';
   document.getElementById('wd-desc').textContent  = `${d.kr||''} 디자이너의 졸업 작품입니다. ${d.intro||''} 이 작품은 Things on the axis 졸업전시를 위해 제작되었으며, 각자의 고유한 시각적 언어로 세계를 탐구합니다.`;
   document.getElementById('wd-by').textContent    = `${d.kr||''} / ${d.en||''}`;
-  document.getElementById('wd-cat2').textContent  = d.category||'';
-  document.getElementById('wd-dlink').onclick = ()=>openDesigner(idx);
+  document.getElementById('wd-cat2').textContent  = w.category||'';
+  document.getElementById('wd-dlink').onclick = ()=>openDesigner(dIdx);
   window.scrollTo(0,0);
+}
+
+function openWork(idx) {
+  openWorkDirect(idx, 0);
 }
 
 function closeDetail(type) {
@@ -694,68 +717,7 @@ function submitMsg() {
 }
 
 // ════ FALLBACK DATA ════
-const fallback=[
-  {id:1,kr:'박한결',en:'Park Hangyeol',email:'hangyeol@snut.ac.kr',insta:'@hangyeol_d',track:'경험디자인',workTitle:'가능성의 공간',category:'브랜딩',intro:'공간과 경험을 연결하는 디자인을 탐구합니다.'},
-  {id:3,kr:'유현경',en:'Yoo Hyunkyung',email:'hyunkyung@snut.ac.kr',insta:'@hk_design',track:'콘텐츠 디자인',workTitle:'새로운 시작',category:'타이포그래피',intro:'시각적 언어로 콘텐츠를 디자인합니다.'},
-  {id:9,kr:'안병헌',en:'Ahn Byeongheon',email:'byeongheon@snut.ac.kr',insta:'@bh_ahn',track:'경험디자인',workTitle:'경계를 넘어',category:'편집디자인',intro:'공간과 경험을 연결하는 디자인을 탐구합니다.'},
-  {id:10,kr:'김나림',en:'Kim Nalim',email:'nalim@snut.ac.kr',insta:'@nalim_kim',track:'콘텐츠 디자인',workTitle:'미완성의 아름다움',category:'일러스트레이션',intro:'시각적 언어로 콘텐츠를 디자인합니다.'},
-  {id:11,kr:'사다프',en:'Sadaf Salehi',email:'sadaf@snut.ac.kr',insta:'@sadaf.design',track:'경험디자인',workTitle:'과도기',category:'브랜딩',intro:'다양한 문화적 관점에서 디자인을 탐구합니다.'},
-  {id:12,kr:'강서연',en:'Kang Seoyeon',email:'seoyeon.k@snut.ac.kr',insta:'@sy_kang',track:'콘텐츠 디자인',workTitle:'첫 번째 삽',category:'패키지',intro:'시각적 언어로 콘텐츠를 디자인합니다.'},
-  {id:13,kr:'곽재원',en:'Kwak Jaewon',email:'jaewon@snut.ac.kr',insta:'@jaewon_kwak',track:'경험디자인',workTitle:'베타 버전',category:'편집디자인',intro:'공간과 그래픽을 융합한 작업을 합니다.'},
-  {id:14,kr:'김서영',en:'Kim Seoyoung',email:'seoyoung.k@snut.ac.kr',insta:'@sy.kim',track:'경험디자인',workTitle:'공사 중',category:'모션그래픽',intro:'모션 그래픽과 인터랙션 디자인에 관심이 많습니다.'},
-  {id:15,kr:'민경서',en:'Min Kyeongseo',email:'kyeongseo@snut.ac.kr',insta:'@ks_min',track:'경험디자인',workTitle:'잠재력',category:'UX/UI',intro:'UX/UI 디자인과 서비스 디자인을 공부합니다.'},
-  {id:17,kr:'손지원',en:'Son Jiwon',email:'jiwon.s@snut.ac.kr',insta:'@jiwon_son',track:'콘텐츠 디자인',workTitle:'데이터가 된 실패',category:'타이포그래피',intro:'편집 디자인과 타이포그래피를 사랑합니다.'},
-  {id:19,kr:'이규영',en:'Lee GyuYoung',email:'gyuyoung@snut.ac.kr',insta:'@gy_lee',track:'경험디자인',workTitle:'질문들',category:'브랜딩',intro:'그래픽 디자인과 포토그래피를 병행합니다.'},
-  {id:20,kr:'이승윤',en:'Lee Seungyoon',email:'seungyoon@snut.ac.kr',insta:'@sy_lee_d',track:'콘텐츠 디자인',workTitle:'확장하는 세계',category:'편집디자인',intro:'브랜드 경험 디자인에 집중합니다.'},
-  {id:21,kr:'이휘경',en:'Lee Hwigyung',email:'hwigyung@snut.ac.kr',insta:'@hg_lee',track:'경험디자인',workTitle:'불확실성의 미학',category:'브랜딩',intro:'아이덴티티와 인쇄 디자인을 탐구합니다.'},
-  {id:23,kr:'장자윤',en:'Jang Jayoon',email:'jayoon@snut.ac.kr',insta:'@jayoon.j',track:'콘텐츠 디자인',workTitle:'유연한 창작',category:'일러스트레이션',intro:'일러스트레이션 기반의 스토리텔링을 합니다.'},
-  {id:24,kr:'홍민우',en:'Hong Minwoo',email:'minwoo@snut.ac.kr',insta:'@mw_hong',track:'경험디자인',workTitle:'성장의 과정',category:'모션그래픽',intro:'공간과 그래픽을 융합한 작업을 합니다.'},
-  {id:25,kr:'김소영',en:'Kim Soyeong',email:'soyeong@snut.ac.kr',insta:'@soy_kim',track:'콘텐츠 디자인',workTitle:'신호탄',category:'패키지',intro:'브랜딩과 소셜 미디어 디자인을 합니다.'},
-  {id:26,kr:'강현경',en:'Kang Hyungyung',email:'hyungyung@snut.ac.kr',insta:'@hg_kang',track:'콘텐츠 디자인',workTitle:'출발선',category:'편집디자인',intro:'편집과 아이덴티티 디자인을 공부합니다.'},
-  {id:27,kr:'김예빈',en:'Kim Yebin',email:'yebin@snut.ac.kr',insta:'@yebin_kim',track:'콘텐츠 디자인',workTitle:'세계 구축',category:'일러스트레이션',intro:'캐릭터와 일러스트 작업을 주로 합니다.'},
-  {id:28,kr:'유재원',en:'Yoo Jaewon',email:'jaewon.y@snut.ac.kr',insta:'@jw_yoo',track:'경험디자인',workTitle:'탐구와 발견',category:'UX/UI',intro:'UX 리서치와 서비스 디자인을 탐구합니다.'},
-  {id:29,kr:'구현정',en:'Gu Hyeonjeong',email:'hyeonjeong@snut.ac.kr',insta:'@hj_gu',track:'경험디자인',workTitle:'빈 도화지',category:'브랜딩',intro:'브랜딩과 웹 디자인에 관심이 있습니다.'},
-  {id:30,kr:'권예원',en:'Kwon Yewon',email:'yewon@snut.ac.kr',insta:'@yw_kwon',track:'콘텐츠 디자인',workTitle:'가능성의 공간',category:'타이포그래피',intro:'타이포그래피 기반 그래픽 작업을 합니다.'},
-  {id:31,kr:'김예은',en:'Kim Yeeun',email:'yeeun@snut.ac.kr',insta:'@ye_kim',track:'경험디자인',workTitle:'새로운 시작',category:'모션그래픽',intro:'모션과 인터랙션 디자인을 공부합니다.'},
-  {id:32,kr:'김자민',en:'Kim Jamin',email:'jamin@snut.ac.kr',insta:'@jamin_kim',track:'경험디자인',workTitle:'경계를 넘어',category:'UX/UI',intro:'실험적인 그래픽 작업을 합니다.'},
-  {id:33,kr:'김지현',en:'Kim Jihyeon',email:'jihyeon@snut.ac.kr',insta:'@jh_kim_d',track:'콘텐츠 디자인',workTitle:'미완성의 아름다움',category:'패키지',intro:'패키지와 브랜드 디자인을 탐구합니다.'},
-  {id:34,kr:'김태연',en:'Kim Taeyeon',email:'taeyeon@snut.ac.kr',insta:'@ty_kim',track:'콘텐츠 디자인',workTitle:'과도기',category:'타이포그래피',intro:'그래픽 디자인과 사진을 병행합니다.'},
-  {id:35,kr:'노현우',en:'Roh Hyeonwoo',email:'hyeonwoo@snut.ac.kr',insta:'@hw_roh',track:'경험디자인',workTitle:'첫 번째 삽',category:'UX/UI',intro:'UX/UI와 서비스 기획을 공부합니다.'},
-  {id:36,kr:'박신희',en:'Park Shinhee',email:'shinhee@snut.ac.kr',insta:'@sh_park',track:'콘텐츠 디자인',workTitle:'베타 버전',category:'편집디자인',intro:'편집 디자인과 사진을 탐구합니다.'},
-  {id:37,kr:'방지현',en:'Bang Jihyun',email:'jihyun@snut.ac.kr',insta:'@jh_bang',track:'콘텐츠 디자인',workTitle:'공사 중',category:'일러스트레이션',intro:'일러스트레이션과 그래픽 작업을 합니다.'},
-  {id:38,kr:'서경빈',en:'Seo Gyeongbin',email:'gyeongbin@snut.ac.kr',insta:'@gb_seo',track:'경험디자인',workTitle:'잠재력',category:'브랜딩',intro:'브랜딩과 공간 디자인에 관심이 있습니다.'},
-  {id:39,kr:'신수빈',en:'Shin Soobin',email:'soobin@snut.ac.kr',insta:'@sb_shin',track:'경험디자인',workTitle:'데이터가 된 실패',category:'모션그래픽',intro:'모션 그래픽과 영상 디자인을 합니다.'},
-  {id:40,kr:'신풍경',en:'Shin Punggyeong',email:'punggyeong@snut.ac.kr',insta:'@pg_shin',track:'콘텐츠 디자인',workTitle:'질문들',category:'일러스트레이션',intro:'자연에서 영감을 받은 그래픽 작업을 합니다.'},
-  {id:41,kr:'안서연',en:'Ahn Seoyeon',email:'seoyeon.a@snut.ac.kr',insta:'@sy_ahn',track:'콘텐츠 디자인',workTitle:'확장하는 세계',category:'타이포그래피',intro:'타이포그래피와 그래픽 디자인을 합니다.'},
-  {id:42,kr:'유지원',en:'Yu Jiwon',email:'jiwon.yu@snut.ac.kr',insta:'@jw_yu',track:'경험디자인',workTitle:'불확실성의 미학',category:'UX/UI',intro:'UX 디자인과 사용자 리서치를 합니다.'},
-  {id:43,kr:'윤예현',en:'Yoon Yehyeon',email:'yehyeon@snut.ac.kr',insta:'@yh_yoon',track:'콘텐츠 디자인',workTitle:'유연한 창작',category:'편집디자인',intro:'브랜딩과 편집 디자인을 탐구합니다.'},
-  {id:47,kr:'전서정',en:'Jeon Seojeong',email:'seojeong@snut.ac.kr',insta:'@sj_jeon',track:'콘텐츠 디자인',workTitle:'성장의 과정',category:'패키지',intro:'아이덴티티와 홍보물 디자인을 합니다.'},
-  {id:48,kr:'전희주',en:'Jeon Heeju',email:'heeju@snut.ac.kr',insta:'@hj_jeon',track:'콘텐츠 디자인',workTitle:'신호탄',category:'일러스트레이션',intro:'일러스트레이션과 타이포그래피를 합니다.'},
-  {id:49,kr:'정다원',en:'Jung Dawon',email:'dawon@snut.ac.kr',insta:'@dw_jung',track:'콘텐츠 디자인',workTitle:'출발선',category:'브랜딩',intro:'그래픽 디자인과 브랜딩을 탐구합니다.'},
-  {id:50,kr:'정연수',en:'Jeong Yeonsu',email:'yeonsu@snut.ac.kr',insta:'@ys_jeong',track:'경험디자인',workTitle:'세계 구축',category:'UX/UI',intro:'UX/UI와 인터랙션 디자인을 공부합니다.'},
-  {id:51,kr:'조유경',en:'Cho Yugyeong',email:'yugyeong@snut.ac.kr',insta:'@yg_cho',track:'경험디자인',workTitle:'탐구와 발견',category:'모션그래픽',intro:'모션 그래픽과 영상 작업을 합니다.'},
-  {id:52,kr:'최연서',en:'Choi Yeonseo',email:'yeonseo@snut.ac.kr',insta:'@ys_choi',track:'콘텐츠 디자인',workTitle:'빈 도화지',category:'편집디자인',intro:'편집 디자인과 포토그래피를 합니다.'},
-  {id:53,kr:'최유진',en:'Choi Yujin',email:'yujin@snut.ac.kr',insta:'@yj_choi',track:'콘텐츠 디자인',workTitle:'가능성의 공간',category:'패키지',intro:'브랜딩과 패키지 디자인을 탐구합니다.'},
-  {id:54,kr:'최효선',en:'Choi Hyosun',email:'hyosun@snut.ac.kr',insta:'@hs_choi',track:'콘텐츠 디자인',workTitle:'새로운 시작',category:'타이포그래피',intro:'타이포그래피와 그래픽 아트를 합니다.'},
-  {id:55,kr:'한수민',en:'Han Sumin',email:'sumin@snut.ac.kr',insta:'@sm_han',track:'콘텐츠 디자인',workTitle:'경계를 넘어',category:'일러스트레이션',intro:'일러스트레이션 기반 스토리텔링을 합니다.'},
-  {id:56,kr:'황수빈',en:'Hwang Subin',email:'subin@snut.ac.kr',insta:'@sb_hwang',track:'경험디자인',workTitle:'미완성의 아름다움',category:'UX/UI',intro:'UX 리서치와 서비스 디자인을 탐구합니다.'},
-  {id:57,kr:'김지윤',en:'Kim Jiyoon',email:'jiyoon@snut.ac.kr',insta:'@jy_kim_d',track:'콘텐츠 디자인',workTitle:'과도기',category:'브랜딩',intro:'브랜딩과 소셜 미디어 디자인을 합니다.'},
-  {id:58,kr:'김정현',en:'Kim Jeonghyeon',email:'jeonghyeon@snut.ac.kr',insta:'@jh_kim_m',track:'경험디자인',workTitle:'첫 번째 삽',category:'모션그래픽',intro:'모션과 3D 그래픽 작업을 합니다.'},
-  {id:59,kr:'부듀뚜옹',en:'Vu Dieu Thuong',email:'thuong@snut.ac.kr',insta:'@thuong_d',track:'경험디자인',workTitle:'베타 버전',category:'브랜딩',intro:'국제적 관점에서 그래픽 디자인을 탐구합니다.'},
-  {id:60,kr:'심정현',en:'Sim Junghyun',email:'junghyun@snut.ac.kr',insta:'@jh_sim',track:'경험디자인',workTitle:'공사 중',category:'UX/UI',intro:'UX/UI 디자인과 서비스 기획을 합니다.'},
-  {id:61,kr:'엥흐진',en:'Enkhjin Sanchirdorj',email:'enkhjin@snut.ac.kr',insta:'@enkhjin_d',track:'경험디자인',workTitle:'잠재력',category:'모션그래픽',intro:'문화 다양성을 담은 그래픽 작업을 합니다.'},
-  {id:62,kr:'이소은',en:'Lee Soeun',email:'soeun@snut.ac.kr',insta:'@se_lee',track:'콘텐츠 디자인',workTitle:'데이터가 된 실패',category:'편집디자인',intro:'편집 디자인과 아이덴티티를 탐구합니다.'},
-  {id:63,kr:'이승은',en:'Lee Seungeun',email:'seungeun@snut.ac.kr',insta:'@sg_lee',track:'콘텐츠 디자인',workTitle:'질문들',category:'타이포그래피',intro:'타이포그래피와 그래픽 작업을 합니다.'},
-  {id:64,kr:'정선하',en:'Jeong Seonha',email:'seonha@snut.ac.kr',insta:'@sh_jeong',track:'콘텐츠 디자인',workTitle:'확장하는 세계',category:'패키지',intro:'브랜딩과 패키지 디자인에 관심이 있습니다.'},
-  {id:65,kr:'엥흘렝',en:'Enkhlen Galbayar',email:'enkhlen@snut.ac.kr',insta:'@enkhlen_g',track:'경험디자인',workTitle:'불확실성의 미학',category:'모션그래픽',intro:'국경을 넘는 디자인 언어를 탐구합니다.'},
-  {id:66,kr:'김채연',en:'Kim Chaeyeon',email:'chaeyeon@snut.ac.kr',insta:'@cy_kim',track:'콘텐츠 디자인',workTitle:'유연한 창작',category:'일러스트레이션',intro:'브랜딩과 일러스트레이션을 병행합니다.'},
-  {id:67,kr:'김사랑',en:'Kim Sarang',email:'sarang@snut.ac.kr',insta:'@sarang_kim',track:'콘텐츠 디자인',workTitle:'성장의 과정',category:'브랜딩',intro:'감성적인 그래픽 디자인을 추구합니다.'},
-  {id:68,kr:'신예은',en:'Shin Yeeun',email:'yeeun.s@snut.ac.kr',insta:'@ye_shin',track:'콘텐츠 디자인',workTitle:'신호탄',category:'편집디자인',intro:'편집 디자인과 홍보 디자인을 합니다.'},
-  {id:69,kr:'김경훈',en:'Kim Kyeonghun',email:'kyeonghun@snut.ac.kr',insta:'@kh_kim',track:'경험디자인',workTitle:'출발선',category:'UX/UI',intro:'UX와 디지털 디자인을 탐구합니다.'},
-  {id:70,kr:'정자은',en:'Jeong Jaeun',email:'jaeun@snut.ac.kr',insta:'@je_jeong',track:'콘텐츠 디자인',workTitle:'세계 구축',category:'타이포그래피',intro:'그래픽 아트와 실험적 디자인을 합니다.'},
-  {id:71,kr:'김이원',en:'Kim Yiwon',email:'yiwon@snut.ac.kr',insta:'@yw_kim_d',track:'경험디자인',workTitle:'탐구와 발견',category:'브랜딩',intro:'브랜딩과 아이덴티티 디자인을 공부합니다.'},
-  {id:72,kr:'임수민',en:'Im Soomin',email:'soomin@snut.ac.kr',insta:'@sm_im',track:'경험디자인',workTitle:'빈 도화지',category:'모션그래픽',intro:'모션 그래픽과 인터랙션 디자인을 탐구합니다.'},
-];
+const fallback=[{"id": 1, "kr": "응웬흰민투", "en": "Minh Thu Nguyen", "track": "콘텐츠 디자인", "insta": "@minh_thu_nguyen_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 1", "category": "편집"}, {"workTitle": "UX/UI 솔루션 1", "category": "UX/UI"}], "workTitle": "편집 프로젝트 1", "category": "편집"}, {"id": 3, "kr": "유혜원", "en": "Hyewon Yoo", "track": "콘텐츠 디자인", "insta": "@hyewon_yoo_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 2", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 2", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 2", "category": "일러스트"}, {"id": 5, "kr": "전예진", "en": "Yejin Jeon", "track": "콘텐츠 디자인", "insta": "@yejin_jeon_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 3", "category": "영상"}, {"workTitle": "UX/UI 솔루션 3", "category": "UX/UI"}], "workTitle": "영상 프로젝트 3", "category": "영상"}, {"id": 7, "kr": "최은해", "en": "Eunhae Choi", "track": "콘텐츠 디자인", "insta": "@eunhae_choi_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 4", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 4", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 4", "category": "BX(브랜드)"}, {"id": 9, "kr": "김민준", "en": "Minjun Kim", "track": "콘텐츠 디자인", "insta": "@minjun_kim_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 5", "category": "편집"}, {"workTitle": "UX/UI 솔루션 5", "category": "UX/UI"}], "workTitle": "편집 프로젝트 5", "category": "편집"}, {"id": 11, "kr": "서민기", "en": "Minki Seo", "track": "콘텐츠 디자인", "insta": "@minki_seo_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 6", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 6", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 6", "category": "일러스트"}, {"id": 13, "kr": "하준휘", "en": "Junhwi Ha", "track": "콘텐츠 디자인", "insta": "@junhwi_ha_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 7", "category": "영상"}, {"workTitle": "UX/UI 솔루션 7", "category": "UX/UI"}], "workTitle": "영상 프로젝트 7", "category": "영상"}, {"id": 15, "kr": "한혜원", "en": "Hyewon Han", "track": "콘텐츠 디자인", "insta": "@hyewon_han_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 8", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 8", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 8", "category": "BX(브랜드)"}, {"id": 17, "kr": "이호경", "en": "Hokyeong Lee", "track": "콘텐츠 디자인", "insta": "@hokyeong_lee_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 9", "category": "편집"}, {"workTitle": "UX/UI 솔루션 9", "category": "UX/UI"}], "workTitle": "편집 프로젝트 9", "category": "편집"}, {"id": 19, "kr": "박성은", "en": "Seongeun Park", "track": "콘텐츠 디자인", "insta": "@seongeun_park_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 10", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 10", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 10", "category": "일러스트"}, {"id": 21, "kr": "우지윤", "en": "Jiyoon Woo", "track": "콘텐츠 디자인", "insta": "@jiyoon_woo_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 11", "category": "영상"}, {"workTitle": "UX/UI 솔루션 11", "category": "UX/UI"}], "workTitle": "영상 프로젝트 11", "category": "영상"}, {"id": 23, "kr": "강민지", "en": "Minji Kang", "track": "콘텐츠 디자인", "insta": "@minji_kang_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 12", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 12", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 12", "category": "BX(브랜드)"}, {"id": 25, "kr": "신서애", "en": "Seoae Shin", "track": "콘텐츠 디자인", "insta": "@seoae_shin_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 13", "category": "편집"}, {"workTitle": "UX/UI 솔루션 13", "category": "UX/UI"}], "workTitle": "편집 프로젝트 13", "category": "편집"}, {"id": 27, "kr": "윤희재", "en": "Heejae Yoon", "track": "콘텐츠 디자인", "insta": "@heejae_yoon_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 14", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 14", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 14", "category": "일러스트"}, {"id": 29, "kr": "권지은", "en": "Jieun Kwon", "track": "콘텐츠 디자인", "insta": "@jieun_kwon_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 15", "category": "영상"}, {"workTitle": "UX/UI 솔루션 15", "category": "UX/UI"}], "workTitle": "영상 프로젝트 15", "category": "영상"}, {"id": 31, "kr": "김윤", "en": "Yoon Kim", "track": "콘텐츠 디자인", "insta": "@yoon_kim_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 16", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 16", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 16", "category": "BX(브랜드)"}, {"id": 33, "kr": "남현정", "en": "Hyeonjeong Nam", "track": "콘텐츠 디자인", "insta": "@hyeonjeong_nam_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 17", "category": "편집"}, {"workTitle": "UX/UI 솔루션 17", "category": "UX/UI"}], "workTitle": "편집 프로젝트 17", "category": "편집"}, {"id": 35, "kr": "서유랑", "en": "Yurang Seo", "track": "콘텐츠 디자인", "insta": "@yurang_seo_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 18", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 18", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 18", "category": "일러스트"}, {"id": 37, "kr": "이수민", "en": "Sumin Lee", "track": "콘텐츠 디자인", "insta": "@sumin_lee_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 19", "category": "영상"}, {"workTitle": "UX/UI 솔루션 19", "category": "UX/UI"}], "workTitle": "영상 프로젝트 19", "category": "영상"}, {"id": 39, "kr": "이진영", "en": "Jinyoung Lee", "track": "콘텐츠 디자인", "insta": "@jinyoung_lee_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 20", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 20", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 20", "category": "BX(브랜드)"}, {"id": 41, "kr": "이채원", "en": "Chaewon Lee", "track": "콘텐츠 디자인", "insta": "@chaewon_lee_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 21", "category": "편집"}, {"workTitle": "UX/UI 솔루션 21", "category": "UX/UI"}], "workTitle": "편집 프로젝트 21", "category": "편집"}, {"id": 43, "kr": "이하리", "en": "Hari Lee", "track": "콘텐츠 디자인", "insta": "@hari_lee_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 22", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 22", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 22", "category": "일러스트"}, {"id": 45, "kr": "장정아", "en": "Jeonga Jang", "track": "콘텐츠 디자인", "insta": "@jeonga_jang_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 23", "category": "영상"}, {"workTitle": "UX/UI 솔루션 23", "category": "UX/UI"}], "workTitle": "영상 프로젝트 23", "category": "영상"}, {"id": 47, "kr": "김다인", "en": "Dain Kim", "track": "콘텐츠 디자인", "insta": "@dain_kim_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 24", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 24", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 24", "category": "BX(브랜드)"}, {"id": 49, "kr": "김민주", "en": "Minju Kim", "track": "콘텐츠 디자인", "insta": "@minju_kim_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 25", "category": "편집"}, {"workTitle": "UX/UI 솔루션 25", "category": "UX/UI"}], "workTitle": "편집 프로젝트 25", "category": "편집"}, {"id": 51, "kr": "김슬아", "en": "Seula Kim", "track": "콘텐츠 디자인", "insta": "@seula_kim_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 26", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 26", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 26", "category": "일러스트"}, {"id": 53, "kr": "박예은", "en": "Yeeun Park", "track": "콘텐츠 디자인", "insta": "@yeeun_park_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 27", "category": "영상"}, {"workTitle": "UX/UI 솔루션 27", "category": "UX/UI"}], "workTitle": "영상 프로젝트 27", "category": "영상"}, {"id": 55, "kr": "서다현", "en": "Dahyun Seo", "track": "콘텐츠 디자인", "insta": "@dahyun_seo_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 28", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 28", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 28", "category": "BX(브랜드)"}, {"id": 57, "kr": "이민지", "en": "Minji Lee", "track": "콘텐츠 디자인", "insta": "@minji_lee_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 29", "category": "편집"}, {"workTitle": "UX/UI 솔루션 29", "category": "UX/UI"}], "workTitle": "편집 프로젝트 29", "category": "편집"}, {"id": 59, "kr": "정세원", "en": "Sewon Jung", "track": "콘텐츠 디자인", "insta": "@sewon_jung_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 30", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 30", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 30", "category": "일러스트"}, {"id": 61, "kr": "지민", "en": "Jimin", "track": "콘텐츠 디자인", "insta": "@jimin_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 31", "category": "영상"}, {"workTitle": "UX/UI 솔루션 31", "category": "UX/UI"}], "workTitle": "영상 프로젝트 31", "category": "영상"}, {"id": 63, "kr": "하스나누딘", "en": "Hasnanuddin", "track": "콘텐츠 디자인", "insta": "@hasnanuddin_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 32", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 32", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 32", "category": "BX(브랜드)"}, {"id": 65, "kr": "정희련", "en": "Heeryun Jung", "track": "콘텐츠 디자인", "insta": "@heeryun_jung_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 33", "category": "편집"}, {"workTitle": "UX/UI 솔루션 33", "category": "UX/UI"}], "workTitle": "편집 프로젝트 33", "category": "편집"}, {"id": 67, "kr": "김병준", "en": "Byungjun Kim", "track": "콘텐츠 디자인", "insta": "@byungjun_kim_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 34", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 34", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 34", "category": "일러스트"}, {"id": 69, "kr": "오채림", "en": "Chaerim Oh", "track": "콘텐츠 디자인", "insta": "@chaerim_oh_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 35", "category": "영상"}, {"workTitle": "UX/UI 솔루션 35", "category": "UX/UI"}], "workTitle": "영상 프로젝트 35", "category": "영상"}, {"id": 71, "kr": "양지연", "en": "Jiyeon Yang", "track": "콘텐츠 디자인", "insta": "@jiyeon_yang_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 36", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 36", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 36", "category": "BX(브랜드)"}, {"id": 73, "kr": "윤여진", "en": "Yeojin Yoon", "track": "콘텐츠 디자인", "insta": "@yeojin_yoon_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 37", "category": "편집"}, {"workTitle": "UX/UI 솔루션 37", "category": "UX/UI"}], "workTitle": "편집 프로젝트 37", "category": "편집"}, {"id": 75, "kr": "김규원", "en": "Gyuwon Kim", "track": "콘텐츠 디자인", "insta": "@gyuwon_kim_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 38", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 38", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 38", "category": "일러스트"}, {"id": 77, "kr": "김나현", "en": "Nahyun Kim", "track": "콘텐츠 디자인", "insta": "@nahyun_kim_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 39", "category": "영상"}, {"workTitle": "UX/UI 솔루션 39", "category": "UX/UI"}], "workTitle": "영상 프로젝트 39", "category": "영상"}, {"id": 79, "kr": "김민경", "en": "Minkyoung Kim", "track": "콘텐츠 디자인", "insta": "@minkyoung_kim_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 40", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 40", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 40", "category": "BX(브랜드)"}, {"id": 81, "kr": "김서연(A)", "en": "Seoyeon Kim A", "track": "콘텐츠 디자인", "insta": "@seoyeon_kim_a_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 41", "category": "편집"}, {"workTitle": "UX/UI 솔루션 41", "category": "UX/UI"}], "workTitle": "편집 프로젝트 41", "category": "편집"}, {"id": 83, "kr": "유소연", "en": "Soyeon Yoo", "track": "콘텐츠 디자인", "insta": "@soyeon_yoo_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 42", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 42", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 42", "category": "일러스트"}, {"id": 85, "kr": "윤은정", "en": "Eunjeong Yoon", "track": "콘텐츠 디자인", "insta": "@eunjeong_yoon_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 43", "category": "영상"}, {"workTitle": "UX/UI 솔루션 43", "category": "UX/UI"}], "workTitle": "영상 프로젝트 43", "category": "영상"}, {"id": 87, "kr": "이다현", "en": "Dahyun Lee", "track": "콘텐츠 디자인", "insta": "@dahyun_lee_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 44", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 44", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 44", "category": "BX(브랜드)"}, {"id": 89, "kr": "이예림", "en": "Yerim Lee", "track": "콘텐츠 디자인", "insta": "@yerim_lee_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 45", "category": "편집"}, {"workTitle": "UX/UI 솔루션 45", "category": "UX/UI"}], "workTitle": "편집 프로젝트 45", "category": "편집"}, {"id": 91, "kr": "이혜미", "en": "Hyemi Lee", "track": "콘텐츠 디자인", "insta": "@hyemi_lee_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 46", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 46", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 46", "category": "일러스트"}, {"id": 93, "kr": "임정원", "en": "Jeongwon Im", "track": "콘텐츠 디자인", "insta": "@jeongwon_im_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 47", "category": "영상"}, {"workTitle": "UX/UI 솔루션 47", "category": "UX/UI"}], "workTitle": "영상 프로젝트 47", "category": "영상"}, {"id": 95, "kr": "장성주", "en": "Seongju Jang", "track": "콘텐츠 디자인", "insta": "@seongju_jang_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 48", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 48", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 48", "category": "BX(브랜드)"}, {"id": 97, "kr": "최지민", "en": "Jimin Choi", "track": "콘텐츠 디자인", "insta": "@jimin_choi_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 49", "category": "편집"}, {"workTitle": "UX/UI 솔루션 49", "category": "UX/UI"}], "workTitle": "편집 프로젝트 49", "category": "편집"}, {"id": 99, "kr": "김서연(B)", "en": "Seoyeon Kim B", "track": "콘텐츠 디자인", "insta": "@seoyeon_kim_b_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 50", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 50", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 50", "category": "일러스트"}, {"id": 101, "kr": "김효리", "en": "Hyori Kim", "track": "콘텐츠 디자인", "insta": "@hyori_kim_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 51", "category": "영상"}, {"workTitle": "UX/UI 솔루션 51", "category": "UX/UI"}], "workTitle": "영상 프로젝트 51", "category": "영상"}, {"id": 103, "kr": "홍민아", "en": "Mina Hong", "track": "콘텐츠 디자인", "insta": "@mina_hong_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 52", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 52", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 52", "category": "BX(브랜드)"}, {"id": 105, "kr": "김채은", "en": "Chaeeun Kim", "track": "콘텐츠 디자인", "insta": "@chaeeun_kim_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 53", "category": "편집"}, {"workTitle": "UX/UI 솔루션 53", "category": "UX/UI"}], "workTitle": "편집 프로젝트 53", "category": "편집"}, {"id": 107, "kr": "이장현", "en": "Janghyun Lee", "track": "콘텐츠 디자인", "insta": "@janghyun_lee_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 54", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 54", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 54", "category": "일러스트"}, {"id": 109, "kr": "박진아", "en": "Jina Park", "track": "콘텐츠 디자인", "insta": "@jina_park_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 55", "category": "영상"}, {"workTitle": "UX/UI 솔루션 55", "category": "UX/UI"}], "workTitle": "영상 프로젝트 55", "category": "영상"}, {"id": 111, "kr": "응우옌비엣호안", "en": "Viet Hoan Nguyen", "track": "콘텐츠 디자인", "insta": "@viet_hoan_nguyen_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 56", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 56", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 56", "category": "BX(브랜드)"}, {"id": 113, "kr": "김영도", "en": "Youngdo Kim", "track": "콘텐츠 디자인", "insta": "@youngdo_kim_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 57", "category": "편집"}, {"workTitle": "UX/UI 솔루션 57", "category": "UX/UI"}], "workTitle": "편집 프로젝트 57", "category": "편집"}, {"id": 115, "kr": "김민솔", "en": "Minsol Kim", "track": "콘텐츠 디자인", "insta": "@minsol_kim_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 58", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 58", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 58", "category": "일러스트"}, {"id": 117, "kr": "유예린", "en": "Yerin Yoo", "track": "콘텐츠 디자인", "insta": "@yerin_yoo_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 59", "category": "영상"}, {"workTitle": "UX/UI 솔루션 59", "category": "UX/UI"}], "workTitle": "영상 프로젝트 59", "category": "영상"}, {"id": 119, "kr": "정세찬", "en": "Sechan Jung", "track": "콘텐츠 디자인", "insta": "@sechan_jung_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 60", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 60", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 60", "category": "BX(브랜드)"}, {"id": 121, "kr": "주하윤", "en": "Hayun Joo", "track": "콘텐츠 디자인", "insta": "@hayun_joo_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 61", "category": "편집"}, {"workTitle": "UX/UI 솔루션 61", "category": "UX/UI"}], "workTitle": "편집 프로젝트 61", "category": "편집"}, {"id": 123, "kr": "최윤", "en": "Yoon Choi", "track": "콘텐츠 디자인", "insta": "@yoon_choi_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 62", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 62", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 62", "category": "일러스트"}, {"id": 125, "kr": "한세은", "en": "Saeeun Han", "track": "콘텐츠 디자인", "insta": "@saeeun_han_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 63", "category": "영상"}, {"workTitle": "UX/UI 솔루션 63", "category": "UX/UI"}], "workTitle": "영상 프로젝트 63", "category": "영상"}, {"id": 127, "kr": "김예진", "en": "Yejin Kim", "track": "콘텐츠 디자인", "insta": "@yejin_kim_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 64", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 64", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 64", "category": "BX(브랜드)"}, {"id": 129, "kr": "윤중현", "en": "Junghyun Yoon", "track": "콘텐츠 디자인", "insta": "@junghyun_yoon_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 65", "category": "편집"}, {"workTitle": "UX/UI 솔루션 65", "category": "UX/UI"}], "workTitle": "편집 프로젝트 65", "category": "편집"}, {"id": 131, "kr": "임민경", "en": "Minkyoung Lim", "track": "콘텐츠 디자인", "insta": "@minkyoung_lim_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 66", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 66", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 66", "category": "일러스트"}, {"id": 133, "kr": "조진우", "en": "Jinwoo Jo", "track": "콘텐츠 디자인", "insta": "@jinwoo_jo_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 67", "category": "영상"}, {"workTitle": "UX/UI 솔루션 67", "category": "UX/UI"}], "workTitle": "영상 프로젝트 67", "category": "영상"}, {"id": 135, "kr": "최민석", "en": "Minseok Choi", "track": "콘텐츠 디자인", "insta": "@minseok_choi_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 68", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 68", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 68", "category": "BX(브랜드)"}, {"id": 137, "kr": "강민영", "en": "Minyoung Kang", "track": "콘텐츠 디자인", "insta": "@minyoung_kang_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 69", "category": "편집"}, {"workTitle": "UX/UI 솔루션 69", "category": "UX/UI"}], "workTitle": "편집 프로젝트 69", "category": "편집"}, {"id": 139, "kr": "신채민", "en": "Chaemin Shin", "track": "콘텐츠 디자인", "insta": "@chaemin_shin_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 70", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 70", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 70", "category": "일러스트"}, {"id": 141, "kr": "안시언", "en": "Sieon Ahn", "track": "콘텐츠 디자인", "insta": "@sieon_ahn_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 71", "category": "영상"}, {"workTitle": "UX/UI 솔루션 71", "category": "UX/UI"}], "workTitle": "영상 프로젝트 71", "category": "영상"}, {"id": 143, "kr": "이미소", "en": "Miso Lee", "track": "콘텐츠 디자인", "insta": "@miso_lee_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 72", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 72", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 72", "category": "BX(브랜드)"}, {"id": 145, "kr": "이예은", "en": "Yeeun Lee", "track": "콘텐츠 디자인", "insta": "@yeeun_lee_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 73", "category": "편집"}, {"workTitle": "UX/UI 솔루션 73", "category": "UX/UI"}], "workTitle": "편집 프로젝트 73", "category": "편집"}, {"id": 147, "kr": "최서영", "en": "Seoyoung Choi", "track": "콘텐츠 디자인", "insta": "@seoyoung_choi_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 74", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 74", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 74", "category": "일러스트"}, {"id": 149, "kr": "김현정", "en": "Hyeonjeong Kim", "track": "콘텐츠 디자인", "insta": "@hyeonjeong_kim_official", "intro": "영상의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "영상 프로젝트 75", "category": "영상"}, {"workTitle": "UX/UI 솔루션 75", "category": "UX/UI"}], "workTitle": "영상 프로젝트 75", "category": "영상"}, {"id": 151, "kr": "카리나", "en": "Karina", "track": "콘텐츠 디자인", "insta": "@karina_official", "intro": "BX(브랜드)의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "BX(브랜드) 프로젝트 76", "category": "BX(브랜드)"}, {"workTitle": "CX(서비스디자인) 솔루션 76", "category": "CX(서비스디자인)"}], "workTitle": "BX(브랜드) 프로젝트 76", "category": "BX(브랜드)"}, {"id": 153, "kr": "조혜인", "en": "Hyein Jo", "track": "콘텐츠 디자인", "insta": "@hyein_jo_official", "intro": "편집의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "편집 프로젝트 77", "category": "편집"}, {"workTitle": "UX/UI 솔루션 77", "category": "UX/UI"}], "workTitle": "편집 프로젝트 77", "category": "편집"}, {"id": 155, "kr": "박한결", "en": "Hangyeol Park", "track": "콘텐츠 디자인", "insta": "@hangyeol_park_official", "intro": "일러스트의 시각적 가치를 탐구합니다.", "email": "", "works": [{"workTitle": "일러스트 프로젝트 78", "category": "일러스트"}, {"workTitle": "CX(서비스디자인) 솔루션 78", "category": "CX(서비스디자인)"}], "workTitle": "일러스트 프로젝트 78", "category": "일러스트"}];
 
 tryAutoLoad();
 renderMsgs();
