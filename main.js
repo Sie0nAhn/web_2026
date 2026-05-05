@@ -1,6 +1,5 @@
-let DESIGNERS = []; // 기존 하드코딩 배열 삭제, 빈 배열로 시작
+let DESIGNERS = [];
 
-// 1. CSV 데이터 불러오기 (중복 인물 병합 로직 적용)
 window.addEventListener('DOMContentLoaded', () => {
     fetch('2026_web.csv')
         .then(response => {
@@ -12,13 +11,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    // 2. 디자이너 이름(kr)을 기준으로 데이터 그룹화
                     const groupedDesigners = {};
 
                     results.data.forEach(row => {
                         const krName = row['이름'] || '';
-
-                        // 아직 등록되지 않은 디자이너라면 새 객체 생성 (CSV 헤더명에 맞게 키값 수정 완료)
                         if (!groupedDesigners[krName]) {
                             groupedDesigners[krName] = {
                                 kr: krName,
@@ -26,24 +22,23 @@ window.addEventListener('DOMContentLoaded', () => {
                                 track: row['트랙'] || '',
                                 insta: row['인스타'] || '',
                                 intro: row['한줄 소개'] || '',
-                                works: [] // 작품을 담을 빈 배열 생성
+                                works: []
                             };
                         }
-
-                        // 해당 디자이너의 works 배열에 작품 추가
                         groupedDesigners[krName].works.push({
                             workTitle: row['작품명'] || '',
                             category: row['카테고리'] || ''
                         });
                     });
 
-                    // 3. 그룹화된 객체를 다시 배열로 변환하고 순차적인 id 재부여
-                    DESIGNERS = Object.values(groupedDesigners).map((designer, index) => ({
-                        id: index, // 0부터 다시 고유 ID 부여
-                        ...designer
-                    }));
+                    // 가나다 순 정렬
+                    DESIGNERS = Object.values(groupedDesigners)
+                        .sort((a, b) => a.kr.localeCompare(b.kr, 'ko'))
+                        .map((designer, index) => ({
+                            id: index,
+                            ...designer
+                        }));
 
-                    // 4. 데이터가 다 로드된 후 화면 렌더링
                     renderGrid();
                     renderWorks('all');
                     renderBooth();
@@ -53,9 +48,6 @@ window.addEventListener('DOMContentLoaded', () => {
         })
         .catch(err => console.error(err));
 });
-
-// --- 아래부터는 선생님의 "이게 진짜.html" 원본 코드와 100% 똑같습니다 ---
-// (단 1px, 단 한 개의 클래스명도 건드리지 않았습니다)
 
 function showPage(name) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
@@ -69,18 +61,34 @@ function showPage(name) {
   window.scrollTo(0,0);
 }
 
-function renderGrid() {
+// filter: 검색어 (기본값 빈 문자열 = 전체 표시)
+function renderGrid(filter) {
+  filter = (filter || '').trim();
+  var q = filter.toLowerCase();
   var html = '';
-  for(var i=0; i<DESIGNERS.length; i++){
+  var displayNum = 1;
+
+  for (var i = 0; i < DESIGNERS.length; i++) {
     var d = DESIGNERS[i];
-    html += '<div class="d-card" onclick="openDesigner('+i+')">'
-      +'<span class="d-num">'+String(i+1).padStart(2,'0')+'</span>'
-      +'<div class="d-avatar">'+(d.kr[0]||'?')+'</div>'
-      +'<div class="d-kr">'+d.kr+'</div>'
-      +'<div class="d-en">'+d.en+'</div>'
-      +'</div>';
+    // 한글 이름 또는 영어 이름으로 필터링
+    if (q && !d.kr.includes(filter) && !d.en.toLowerCase().includes(q)) continue;
+    html += '<div class="d-card" onclick="openDesigner(' + i + ')">'
+      + '<span class="d-num">' + String(displayNum++).padStart(2, '0') + '</span>'
+      + '<div class="d-avatar">' + (d.kr[0] || '?') + '</div>'
+      + '<div class="d-kr">' + d.kr + '</div>'
+      + '<div class="d-en">' + d.en + '</div>'
+      + '</div>';
   }
+
+  if (!html) {
+    html = '<p class="no-result">검색 결과가 없습니다.</p>';
+  }
+
   document.getElementById('designer-grid').innerHTML = html;
+}
+
+function searchDesigner(value) {
+  renderGrid(value);
 }
 
 function openDesigner(idx) {

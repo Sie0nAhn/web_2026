@@ -101,6 +101,16 @@
     <h2 class="page-title">Designer</h2>
     <span class="page-sub">78명</span>
   </div>
+  <!-- 검색창 -->
+  <div class="designer-search">
+    <input
+      type="text"
+      id="designer-search-input"
+      placeholder="이름으로 검색 — Search by name"
+      oninput="searchDesigner(this.value)"
+    >
+    <span class="search-icon">↗</span>
+  </div>
   <div class="designer-grid" id="designer-grid"></div>
   <footer>
     <span>2026 ⓒ Seoul National University of Science and Technology</span>

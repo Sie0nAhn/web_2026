@@ -47,7 +47,53 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:52px;display:flex;ali
 .page-header{padding:60px 40px 32px;display:flex;justify-content:space-between;align-items:flex-end}
 .page-title{font-size:clamp(44px,6vw,80px);font-weight:800;letter-spacing:-.04em;line-height:1}
 .page-sub{font-size:11px;color:var(--g500)}
-.designer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:2px;padding:0 40px 80px}
+
+/* ── 검색창 ── */
+.designer-search{
+  position:relative;
+  padding:0 40px 28px;
+  display:flex;
+  align-items:center;
+  border-bottom:1px solid var(--g800);
+  margin-bottom:2px;
+}
+.designer-search input{
+  width:100%;
+  max-width:440px;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid var(--g700);
+  padding:10px 36px 10px 0;
+  font-family:var(--font);
+  font-size:13px;
+  font-weight:300;
+  color:var(--white);
+  outline:none;
+  transition:border-color var(--ease);
+  letter-spacing:.02em;
+}
+.designer-search input:focus{border-bottom-color:var(--g300)}
+.designer-search input::placeholder{color:var(--g500)}
+.search-icon{
+  position:absolute;
+  left:calc(40px + 400px);
+  font-size:14px;
+  color:var(--g500);
+  pointer-events:none;
+  transition:color var(--ease);
+}
+.designer-search input:focus ~ .search-icon{color:var(--g300)}
+
+/* 검색 결과 없음 */
+.no-result{
+  padding:80px 40px;
+  font-size:13px;
+  color:var(--g500);
+  letter-spacing:.04em;
+  grid-column:1/-1;
+}
+
+.designer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:2px;padding:2px 40px 80px}
 .d-card{background:var(--bg2);padding:24px 18px 22px;cursor:pointer;transition:background var(--ease);position:relative}
 .d-card:hover{background:var(--white);color:var(--bg)}
 .d-card:hover .d-en{color:rgba(11,11,15,.4)}
@@ -124,3 +170,13 @@ input::placeholder,textarea::placeholder{color:var(--g500)}
 .msg-date{font-size:10px;color:var(--g500);margin-top:4px}
 .msg-text{font-size:13px;font-weight:300;color:var(--g300);line-height:1.85}
 footer{padding:28px 40px;background:var(--bg2);border-top:1px solid var(--g800);display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--g500);letter-spacing:.04em}
+
+/* 검색창 — 내부 input[type=text] 스타일 override (기존 msg input과 충돌 방지) */
+.designer-search input[type=text]{
+  background:transparent;
+  border:none;
+  border-bottom:1px solid var(--g700);
+  padding:10px 36px 10px 0;
+  max-width:440px;
+}
+.designer-search input[type=text]:focus{border-bottom-color:var(--g300)}
