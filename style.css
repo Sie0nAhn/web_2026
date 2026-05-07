@@ -180,3 +180,14 @@ footer{padding:28px 40px;background:var(--bg2);border-top:1px solid var(--g800);
   max-width:440px;
 }
 .designer-search input[type=text]:focus{border-bottom-color:var(--g300)}
+
+/* ── 프로필 이미지 ── */
+.d-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.d-avatar.av-fallback{font-size:17px;font-weight:700}
+.big-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.big-avatar.av-fallback{font-size:30px;font-weight:700}
+
+/* ── 작품 이미지 ── */
+.work-thumb img{width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0}
+.work-thumb.wt-fallback{background:var(--bg3)}
+.work-thumb.wt-fallback::after{content:'—';font-size:40px;font-weight:800;color:var(--g800);position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
