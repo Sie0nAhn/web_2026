@@ -76,7 +76,7 @@ function renderGrid(filter) {
     if (q && !d.kr.includes(filter) && !d.en.toLowerCase().includes(q)) continue;
     html += '<div class="d-card" onclick="openDesigner(' + i + ')">'
       + '<span class="d-num">' + String(displayNum++).padStart(2, '0') + '</span>'
-      + '<div class="d-avatar"><img src="' + d.profileImg + '" alt="' + d.kr + '" onerror="this.parentElement.classList.add(\'av-fallback\');this.remove()"></div>'
+      + '<div class="d-avatar"><img src="' + d.profileImg + '" alt="' + d.kr + '" onerror="this.onerror=null;this.src=\'images/profiles/none.jpg\'"></div>'
       + '<div class="d-kr">' + d.kr + '</div>'
       + '<div class="d-en">' + d.en + '</div>'
       + '</div>';
@@ -100,7 +100,7 @@ function openDesigner(idx) {
   document.getElementById('designer-detail').classList.add('active');
   document.getElementById('work-detail').classList.remove('active');
   var avEl = document.getElementById('dd-av');
-  avEl.innerHTML = '<img src="' + d.profileImg + '" alt="' + d.kr + '" onerror="this.parentElement.classList.add(\'av-fallback\');this.parentElement.textContent=\'' + (d.kr[0]||'?') + '\'">';
+  avEl.innerHTML = '<img src="' + d.profileImg + '" alt="' + d.kr + '" onerror="this.onerror=null;this.src=\'images/profiles/none.jpg\'">';
   document.getElementById('dd-kr').textContent = d.kr;
   document.getElementById('dd-en').textContent = d.en;
   document.getElementById('dd-track').textContent = d.track;
@@ -112,7 +112,7 @@ function openDesigner(idx) {
   for(var wi=0; wi<d.works.length; wi++){
     var w = d.works[wi];
     whtml += '<div class="work-card" onclick="openWorkDirect('+idx+','+wi+')">'
-      +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.parentElement.classList.add(\'wt-fallback\');this.remove()">'
+      +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
       +'<div class="work-tag">'+w.category+'</div></div>'
       +'<div class="work-info"><div class="work-title">'+w.workTitle+'</div>'
       +'<div class="work-by">'+w.category+' · 2026</div></div>'
@@ -147,7 +147,7 @@ function renderWorks(cat) {
       var w = d.works[wi];
       if(cat!=='all' && w.category!==cat) continue;
       html += '<div class="work-card" onclick="openWorkDirect('+i+','+wi+')">'
-        +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.parentElement.classList.add(\'wt-fallback\');this.remove()">'
+        +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
         +'<div class="work-tag">'+w.category+'</div></div>'
         +'<div class="work-info"><div class="work-title">'+w.workTitle+'</div>'
         +'<div class="work-by">'+d.kr+' · '+d.en.split(' ')[0]+'</div></div>'
