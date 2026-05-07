@@ -129,7 +129,10 @@ function openWorkDirect(dIdx, wIdx) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('designer-detail').classList.remove('active');
   document.getElementById('work-detail').classList.add('active');
-  document.getElementById('wd-init').textContent = d.kr[0]||'?';
+  var wdImg = document.getElementById('wd-img');
+  wdImg.onerror = function() { this.onerror=null; this.src='images/works/none.jpg'; };
+  wdImg.src = w.workImg;
+  wdImg.alt = w.workTitle;
   document.getElementById('wd-cat').textContent = w.category;
   document.getElementById('wd-title').textContent = w.workTitle;
   document.getElementById('wd-desc').textContent = d.kr+' 디자이너의 졸업 작품입니다. '+(d.intro||'')+' Things on the axis 졸업전시를 위해 제작되었습니다.';

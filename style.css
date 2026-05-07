@@ -142,8 +142,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:52px;display:flex;ali
 .booth-tooltip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--white);color:var(--bg);padding:5px 10px;font-size:10px;font-weight:600;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .12s;z-index:50}
 .booth-cell:hover .booth-tooltip{opacity:1}
 .work-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px;padding:0 40px 80px}
-.wd-hero{aspect-ratio:16/7;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.wd-init-txt{font-size:clamp(80px,14vw,200px);font-weight:900;color:transparent;-webkit-text-stroke:1px var(--g800);letter-spacing:-.06em}
+.wd-hero{aspect-ratio:16/7;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+.wd-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.wd-init-txt{font-size:clamp(80px,14vw,200px);font-weight:900;color:transparent;-webkit-text-stroke:1px var(--g800);letter-spacing:-.06em;position:relative;z-index:1}
 .wd-body{display:grid;grid-template-columns:1fr 300px;border-top:1px solid var(--g800)}
 .wd-left{padding:56px 48px 56px 40px;border-right:1px solid var(--g800)}
 .wd-cat-tag{display:inline-block;background:var(--white);color:var(--bg);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;margin-bottom:24px}
