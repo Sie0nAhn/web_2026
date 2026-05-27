@@ -144,11 +144,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:52px;display:flex;ali
 .work-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px;padding:0 40px 80px}
 /* ── Work 상세 — Behance 세로 스크롤 ── */
 /* 헤더: 썸네일(왼쪽) + 정보(오른쪽) */
-.wdv-header{display:flex;flex-direction:row;align-items:flex-start;gap:0;border-bottom:1px solid var(--g800);min-height:0}
-.wdv-header-thumb{flex:0 0 42%;background:var(--bg2);line-height:0;border-right:1px solid var(--g800)}
-.wdv-header-thumb img{width:100%;height:auto;display:block;object-fit:contain}
+.wdv-header{display:flex;flex-direction:row;align-items:stretch;gap:0;border-bottom:1px solid var(--g800);min-height:0}
+.wdv-header-thumb{flex:0 0 42%;background:var(--bg2);border-right:1px solid var(--g800);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.wdv-header-thumb img{width:100%;height:auto;display:block;aspect-ratio:869/601;object-fit:cover}
 .wdv-header-info{flex:1;padding:48px 40px;display:flex;flex-direction:column;gap:0}
-.wdv-meta{display:flex;flex-direction:column;gap:22px;margin-top:32px;padding-top:32px;border-top:1px solid var(--g800)}
+.wdv-meta{display:flex;flex-direction:column;gap:22px;margin-top:32px}
+@media(max-width:1200px){
+  .wdv-header{flex-direction:column}
+  .wdv-header-thumb{flex:none;width:100%;border-right:none;border-bottom:1px solid var(--g800)}
+  .wdv-header-thumb img{width:100%;aspect-ratio:869/601}
+}
 .wd-cat-tag{display:inline-block;background:var(--white);color:var(--bg);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:5px 12px;margin-bottom:20px}
 .wd-title{font-size:clamp(28px,3.5vw,52px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin-bottom:20px}
 .wd-desc{font-size:13px;font-weight:300;line-height:1.95;color:var(--g300)}
@@ -156,9 +161,9 @@ nav{position:fixed;top:0;left:0;right:0;z-index:200;height:52px;display:flex;ali
 .wd-meta-value{font-size:14px;font-weight:600}
 .wd-dlink{display:block;background:var(--white);color:var(--bg);padding:14px 20px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border:none;width:100%;text-align:left;font-family:var(--font);transition:opacity var(--ease);margin-top:8px}
 .wd-dlink:hover{opacity:.7}
-/* 갤러리: 최대 1400px 중앙 정렬, 양 옆 검정 */
-.wdv-gallery{display:flex;flex-direction:column;gap:0;padding:0;background:var(--bg)}
-.wdv-img-wrap{width:100%;line-height:0;background:var(--bg);display:flex;justify-content:center}
+/* 갤러리: 최대 1400px 중앙 정렬, 양 옆 검정, 9:16 고정 비율 */
+.wdv-gallery{display:flex;flex-direction:column;gap:0;padding:0;padding-top:112px;background:var(--bg)}
+.wdv-img-wrap{width:100%;background:var(--bg);display:flex;justify-content:center}
 .wdv-img-wrap img{width:100%;max-width:1400px;height:auto;display:block}
 @media(max-width:1400px){.wdv-img-wrap img{max-width:100%}}
 .msg-form{margin:0 40px 48px;background:var(--bg2);padding:36px;display:grid;grid-template-columns:1fr auto;gap:20px;align-items:end}
