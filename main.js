@@ -1,7 +1,7 @@
 let DESIGNERS = [];
 
 window.addEventListener('DOMContentLoaded', () => {
-    fetch('2026_web.csv')
+    fetch('2026_web.csv', {cache:'no-store'})
         .then(response => {
             if (!response.ok) throw new Error('CSV 로드 실패');
             return response.text();
@@ -26,10 +26,14 @@ window.addEventListener('DOMContentLoaded', () => {
                                 works: []
                             };
                         }
+                        var imgs = [];
+                        var imgKeys = ['작품이미지','작품이미지2','작품이미지3','작품이미지4','작품이미지5','작품이미지6','작품이미지7'];
+                        imgKeys.forEach(function(k){ if(row[k] && row[k].trim()) imgs.push(row[k].trim()); });
+                        if(imgs.length === 0) imgs.push('images/works/none.jpg');
                         groupedDesigners[krName].works.push({
                             workTitle: row['작품명'] || '',
                             category: row['카테고리'] || '',
-                            workImg: row['작품이미지'] || 'images/works/none.jpg'
+                            workImgs: imgs
                         });
                     });
 
@@ -112,7 +116,7 @@ function openDesigner(idx) {
   for(var wi=0; wi<d.works.length; wi++){
     var w = d.works[wi];
     whtml += '<div class="work-card" onclick="openWorkDirect('+idx+','+wi+')">'
-      +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
+      +'<div class="work-thumb"><img src="'+w.workImgs[0]+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
       +'<div class="work-tag">'+w.category+'</div></div>'
       +'<div class="work-info"><div class="work-title">'+w.workTitle+'</div>'
       +'<div class="work-by">'+w.category+' · 2026</div></div>'
@@ -129,16 +133,26 @@ function openWorkDirect(dIdx, wIdx) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
   document.getElementById('designer-detail').classList.remove('active');
   document.getElementById('work-detail').classList.add('active');
-  var wdImg = document.getElementById('wd-img');
-  wdImg.onerror = function() { this.onerror=null; this.src='images/works/none.jpg'; };
-  wdImg.src = w.workImg;
-  wdImg.alt = w.workTitle;
-  document.getElementById('wd-cat').textContent = w.category;
   document.getElementById('wd-title').textContent = w.workTitle;
   document.getElementById('wd-desc').textContent = d.kr+' 디자이너의 졸업 작품입니다. '+(d.intro||'')+' Things on the axis 졸업전시를 위해 제작되었습니다.';
   document.getElementById('wd-by').textContent = d.kr+' / '+d.en;
   document.getElementById('wd-cat2').textContent = w.category;
   document.getElementById('wd-dlink').onclick = function(){ openDesigner(dIdx); };
+  // 썸네일 (workImgs[0])
+  var thumbEl = document.getElementById('wdv-thumb');
+  thumbEl.onerror = function(){ this.onerror=null; this.src='images/works/none.jpg'; };
+  thumbEl.src = (w.workImgs && w.workImgs[0]) || 'images/works/none.jpg';
+  thumbEl.alt = w.workTitle;
+  // 갤러리 이미지 (workImgs[1] ~), 없으면 none.jpg
+  var galleryImgs = (w.workImgs || []).slice(1);
+  if(galleryImgs.length === 0) galleryImgs = ['images/works/none.jpg'];
+  var ghtml = '';
+  galleryImgs.forEach(function(src, i) {
+    ghtml += '<div class="wdv-img-wrap">'
+      +'<img src="'+src+'" alt="'+w.workTitle+' '+(i+1)+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
+      +'</div>';
+  });
+  document.getElementById('wdv-gallery').innerHTML = ghtml;
   window.scrollTo(0,0);
 }
 
@@ -150,7 +164,7 @@ function renderWorks(cat) {
       var w = d.works[wi];
       if(cat!=='all' && w.category!==cat) continue;
       html += '<div class="work-card" onclick="openWorkDirect('+i+','+wi+')">'
-        +'<div class="work-thumb"><img src="'+w.workImg+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
+        +'<div class="work-thumb"><img src="'+w.workImgs[0]+'" alt="'+w.workTitle+'" onerror="this.onerror=null;this.src=\'images/works/none.jpg\'">'
         +'<div class="work-tag">'+w.category+'</div></div>'
         +'<div class="work-info"><div class="work-title">'+w.workTitle+'</div>'
         +'<div class="work-by">'+d.kr+' · '+d.en.split(' ')[0]+'</div></div>'
@@ -196,6 +210,52 @@ function renderMsgs() {
       +'</div>';
   }
   document.getElementById('msg-list').innerHTML = html;
+}
+
+/* ── 캐러셀 ── */
+var _carImgs = [];
+var _carIdx  = 0;
+
+function initCarousel(imgs, altText) {
+  _carImgs = imgs && imgs.length ? imgs : ['images/works/none.jpg'];
+  _carIdx  = 0;
+  var multi = _carImgs.length > 1;
+
+  // 화살표 표시/숨김
+  document.getElementById('wdc-prev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('wdc-next').style.display = multi ? 'flex' : 'none';
+
+  // 도트 생성
+  var dots = document.getElementById('wdc-dots');
+  if(multi) {
+    dots.innerHTML = _carImgs.map(function(_, i){
+      return '<span class="wdc-dot' + (i===0?' active':'') + '" onclick="carGoTo('+i+')"></span>';
+    }).join('');
+    dots.style.display = 'flex';
+  } else {
+    dots.innerHTML = '';
+    dots.style.display = 'none';
+  }
+
+  _carSetImg(0, altText);
+}
+
+function _carSetImg(idx, altText) {
+  _carIdx = idx;
+  var img = document.getElementById('wd-img');
+  img.onerror = function(){ this.onerror=null; this.src='images/works/none.jpg'; };
+  img.alt = altText || '';
+  img.src = _carImgs[idx];
+  // 도트 active
+  document.querySelectorAll('.wdc-dot').forEach(function(d,i){ d.classList.toggle('active', i===idx); });
+}
+
+function carStep(dir) {
+  _carSetImg((_carIdx + dir + _carImgs.length) % _carImgs.length);
+}
+
+function carGoTo(idx) {
+  _carSetImg(idx);
 }
 
 function submitMsg() {
