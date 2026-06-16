@@ -258,16 +258,111 @@ function carGoTo(idx) {
   _carSetImg(idx);
 }
 
-function submitMsg() {
-  var name = document.getElementById('msg-name').value.trim();
-  var affil = document.getElementById('msg-affil').value.trim();
-  var text = document.getElementById('msg-text').value.trim();
-  if(!name||!text){ alert('이름과 메시지를 입력해주세요.'); return; }
-  var now = new Date();
-  messages.unshift({name:name,affil:affil,text:text,
-    date:now.getFullYear()+'.'+String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0')});
-  renderMsgs();
-  document.getElementById('msg-name').value='';
-  document.getElementById('msg-affil').value='';
-  document.getElementById('msg-text').value='';
+/* ── 포토부스 ── */
+var boothStream = null;
+var boothPhotos = [];
+var boothRunning = false;
+
+function boothInitCam() {
+  if (boothStream) return Promise.resolve();
+  return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    .then(function(stream) {
+      boothStream = stream;
+      document.getElementById('booth-video').srcObject = stream;
+    });
+}
+
+function boothStart() {
+  if (boothRunning) return;
+  boothInitCam().then(function() {
+    boothRunning = true;
+    boothPhotos = [];
+    var btn = document.getElementById('booth-start-btn');
+    var hint = document.getElementById('booth-hint');
+    var dlBtn = document.getElementById('booth-dl-btn');
+    btn.disabled = true;
+    dlBtn.disabled = true;
+    for (var i = 0; i < 4; i++) {
+      var f = document.getElementById('booth-frame-' + i);
+      f.innerHTML = '<span class="booth-frame-num">' + (i + 1) + '</span>';
+    }
+    boothShootSequence(0, btn, hint, dlBtn);
+  }).catch(function() {
+    alert('카메라 접근 권한이 필요합니다.');
+  });
+}
+
+function boothShootSequence(shotIdx, btn, hint, dlBtn) {
+  if (shotIdx >= 4) {
+    boothRunning = false;
+    btn.disabled = false;
+    hint.textContent = '다시 촬영하려면 버튼을 누르세요';
+    dlBtn.disabled = false;
+    return;
+  }
+  hint.textContent = (shotIdx + 1) + ' / 4 촬영 중...';
+  boothCountdown(3, function() {
+    boothCapture(shotIdx);
+    setTimeout(function() {
+      boothShootSequence(shotIdx + 1, btn, hint, dlBtn);
+    }, 600);
+  });
+}
+
+function boothCountdown(sec, cb) {
+  var el = document.getElementById('booth-countdown');
+  if (sec <= 0) { el.textContent = ''; el.classList.remove('show'); cb(); return; }
+  el.textContent = sec;
+  el.classList.add('show');
+  setTimeout(function() { boothCountdown(sec - 1, cb); }, 1000);
+}
+
+function boothCapture(idx) {
+  var video = document.getElementById('booth-video');
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  var ctx = canvas.getContext('2d');
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  boothPhotos[idx] = dataUrl;
+  var frame = document.getElementById('booth-frame-' + idx);
+  frame.innerHTML = '<img src="' + dataUrl + '" alt="photo ' + (idx + 1) + '">';
+  frame.querySelector('img').style.transform = 'none';
+}
+
+function boothDownload() {
+  if (boothPhotos.length < 4) return;
+  var frameW = 256, frameH = 192, gap = 4, padH = 12, padV = 12, footerH = 36;
+  var totalW = frameW + padH * 2;
+  var totalH = padV + (frameH + gap) * 4 - gap + footerH + padV;
+  var canvas = document.getElementById('booth-canvas');
+  canvas.width = totalW;
+  canvas.height = totalH;
+  var ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#111';
+  ctx.fillRect(0, 0, totalW, totalH);
+  var loaded = 0;
+  boothPhotos.forEach(function(src, i) {
+    var img = new Image();
+    img.onload = function() {
+      var y = padV + i * (frameH + gap);
+      ctx.drawImage(img, padH, y, frameW, frameH);
+      loaded++;
+      if (loaded === 4) {
+        ctx.fillStyle = '#888';
+        ctx.font = '700 11px sans-serif';
+        ctx.letterSpacing = '2px';
+        ctx.textAlign = 'center';
+        ctx.fillText('Things on the axis — 2026 SNUT', totalW / 2, totalH - 14);
+        var a = document.createElement('a');
+        a.download = 'photobooth_2026_snut.jpg';
+        a.href = canvas.toDataURL('image/jpeg', 0.95);
+        a.click();
+      }
+    };
+    img.src = src;
+  });
 }

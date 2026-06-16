@@ -202,25 +202,36 @@
 <div id="page-message" class="page">
   <div class="page-header">
     <h2 class="page-title">Message</h2>
-    <span class="page-sub">방명록 — Guestbook</span>
+    <span class="page-sub">포토부스 — Photo Booth</span>
   </div>
-  <div class="msg-form">
-    <div class="msg-inputs">
-      <div>
-        <div class="msg-label">이름 / Name</div>
-        <div class="msg-row">
-          <input type="text" id="msg-name" placeholder="이름을 입력하세요">
-          <input type="text" id="msg-affil" placeholder="소속 (선택)">
-        </div>
+
+  <div class="booth-wrap">
+    <!-- 왼쪽: 카메라 프리뷰 -->
+    <div class="booth-left">
+      <div class="booth-cam-box">
+        <video id="booth-video" autoplay playsinline muted></video>
+        <div class="booth-countdown" id="booth-countdown"></div>
       </div>
-      <div>
-        <div class="msg-label">메시지 / Message</div>
-        <textarea id="msg-text" rows="3" placeholder="응원의 메시지를 남겨주세요"></textarea>
+      <div class="booth-controls">
+        <button class="booth-start-btn" id="booth-start-btn" onclick="boothStart()">촬영 시작 — Start</button>
+        <p class="booth-hint" id="booth-hint">버튼을 누르면 3초 카운트다운 후 4컷을 연속 촬영합니다</p>
       </div>
     </div>
-    <button class="msg-submit" onclick="submitMsg()">남기기</button>
+
+    <!-- 오른쪽: 결과 스트립 -->
+    <div class="booth-right">
+      <div class="booth-strip" id="booth-strip">
+        <div class="booth-frame" id="booth-frame-0"><span class="booth-frame-num">1</span></div>
+        <div class="booth-frame" id="booth-frame-1"><span class="booth-frame-num">2</span></div>
+        <div class="booth-frame" id="booth-frame-2"><span class="booth-frame-num">3</span></div>
+        <div class="booth-frame" id="booth-frame-3"><span class="booth-frame-num">4</span></div>
+        <div class="booth-strip-footer">Things on the axis — 2026 SNUT</div>
+      </div>
+      <canvas id="booth-canvas" style="display:none"></canvas>
+      <button class="booth-dl-btn" id="booth-dl-btn" onclick="boothDownload()" disabled>↓ 다운로드 — Download</button>
+    </div>
   </div>
-  <div class="msg-list" id="msg-list"></div>
+
   <footer>
     <span>2026 ⓒ Seoul National University of Science and Technology</span>
     <span>Visual Communication Design</span>
