@@ -272,40 +272,135 @@ function boothInitCam() {
     });
 }
 
+/* ── 포토부스 상수: 1열 세로 스트립, 16:9 가로형 프레임 ── */
+var OUT_FRAME_W = 960, OUT_FRAME_H = 540; // 16:9 landscape
+var OUT_PAD = 28, OUT_GAP = 10, OUT_FOOTER = 64;
+var OUT_W = OUT_PAD + OUT_FRAME_W + OUT_PAD;
+var OUT_H = OUT_PAD + (OUT_FRAME_H + OUT_GAP) * 4 - OUT_GAP + OUT_FOOTER + OUT_PAD;
+
+var _bubblePos = { x: 14, y: null };
+
+function boothUpdateBubble() {
+  var msg = document.getElementById('booth-msg-input').value.trim();
+  var overlay  = document.getElementById('booth-bubble-overlay');
+  var bubbleEl = document.getElementById('booth-bubble-text');
+  var liveWrap = document.getElementById('booth-bubble-live-wrap');
+  var liveEl   = document.getElementById('booth-bubble-live');
+  var dragHint = document.getElementById('booth-msg-hint-drag');
+
+  // 왼쪽 라이브 미리보기: 항상 표시 (사진 없어도)
+  if (msg) {
+    if (liveEl) liveEl.textContent = msg;
+    if (liveWrap) liveWrap.style.display = 'block';
+  } else {
+    if (liveWrap) liveWrap.style.display = 'none';
+  }
+
+  // 오른쪽 스트립 말풍선: 사진 4장 있을 때만
+  if (msg && boothPhotos.length === 4) {
+    bubbleEl.textContent = msg;
+    overlay.style.display = 'block';
+    if (dragHint) dragHint.style.display = 'block';
+    if (_bubblePos.y === null) {
+      var wrap = document.querySelector('.booth-strip-wrap');
+      var wh = wrap ? wrap.offsetHeight : 600;
+      _bubblePos.y = Math.round(wh * 0.6);
+    }
+    bubbleEl.style.left = _bubblePos.x + 'px';
+    bubbleEl.style.top  = _bubblePos.y + 'px';
+  } else {
+    overlay.style.display = 'none';
+    if (dragHint) dragHint.style.display = 'none';
+  }
+}
+
+/* ── 드래그 ── */
+(function() {
+  var dragging = false, startX, startY, origX, origY;
+
+  function getEl() { return document.getElementById('booth-bubble-text'); }
+
+  function onDown(e) {
+    var el = getEl();
+    if (!el) return;
+    dragging = true;
+    el.classList.add('dragging');
+    var touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    origX = _bubblePos.x;
+    origY = _bubblePos.y || 0;
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    var touch = e.touches ? e.touches[0] : e;
+    var dx = touch.clientX - startX;
+    var dy = touch.clientY - startY;
+    var el = getEl();
+    if (!el) return;
+    var wrap = el.parentElement; // overlay
+    var maxX = wrap.offsetWidth  - el.offsetWidth;
+    var maxY = wrap.offsetHeight - el.offsetHeight - 10; // 꼬리 여유
+    _bubblePos.x = Math.max(0, Math.min(maxX, origX + dx));
+    _bubblePos.y = Math.max(0, Math.min(maxY, origY + dy));
+    el.style.left = _bubblePos.x + 'px';
+    el.style.top  = _bubblePos.y + 'px';
+    e.preventDefault();
+  }
+  function onUp() {
+    if (!dragging) return;
+    dragging = false;
+    var el = getEl();
+    if (el) el.classList.remove('dragging');
+  }
+
+  document.addEventListener('mousedown', function(e) {
+    if (e.target && e.target.id === 'booth-bubble-text') onDown(e);
+  });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchstart', function(e) {
+    if (e.target && e.target.id === 'booth-bubble-text') onDown(e);
+  }, { passive: false });
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onUp);
+})();
+
 function boothStart() {
   if (boothRunning) return;
   boothInitCam().then(function() {
     boothRunning = true;
     boothPhotos = [];
-    var btn = document.getElementById('booth-start-btn');
+    var btn  = document.getElementById('booth-start-btn');
     var hint = document.getElementById('booth-hint');
-    var dlBtn = document.getElementById('booth-dl-btn');
     btn.disabled = true;
-    dlBtn.disabled = true;
+    document.getElementById('booth-qr-btn').disabled = true;
+    document.getElementById('booth-bubble-overlay').style.display = 'none';
+    _bubblePos = { x: 14, y: null };
     for (var i = 0; i < 4; i++) {
       var f = document.getElementById('booth-frame-' + i);
       f.innerHTML = '<span class="booth-frame-num">' + (i + 1) + '</span>';
     }
-    boothShootSequence(0, btn, hint, dlBtn);
+    boothShootSequence(0, btn, hint);
   }).catch(function() {
     alert('카메라 접근 권한이 필요합니다.');
   });
 }
 
-function boothShootSequence(shotIdx, btn, hint, dlBtn) {
+function boothShootSequence(shotIdx, btn, hint) {
   if (shotIdx >= 4) {
     boothRunning = false;
     btn.disabled = false;
     hint.textContent = '다시 촬영하려면 버튼을 누르세요';
-    dlBtn.disabled = false;
+    document.getElementById('booth-qr-btn').disabled = false;
+    boothUpdateBubble();
     return;
   }
   hint.textContent = (shotIdx + 1) + ' / 4 촬영 중...';
   boothCountdown(3, function() {
     boothCapture(shotIdx);
-    setTimeout(function() {
-      boothShootSequence(shotIdx + 1, btn, hint, dlBtn);
-    }, 600);
+    setTimeout(function() { boothShootSequence(shotIdx + 1, btn, hint); }, 600);
   });
 }
 
@@ -319,27 +414,100 @@ function boothCountdown(sec, cb) {
 
 function boothCapture(idx) {
   var video = document.getElementById('booth-video');
+  var vw = video.videoWidth  || 1280;
+  var vh = video.videoHeight || 720;
+  // 카메라 프리뷰(16:9)와 동일하게 크롭
+  var targetRatio = 16 / 9;
+  var srcRatio = vw / vh;
+  var srcX, srcY, srcW, srcH;
+  if (srcRatio > targetRatio) {
+    // 가로가 더 넓음 → 좌우 크롭
+    srcH = vh; srcW = Math.round(vh * targetRatio);
+    srcX = Math.round((vw - srcW) / 2); srcY = 0;
+  } else {
+    // 세로가 더 길음 → 상하 크롭
+    srcW = vw; srcH = Math.round(vw / targetRatio);
+    srcX = 0; srcY = Math.round((vh - srcH) / 2);
+  }
   var canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
+  canvas.width = srcW; canvas.height = srcH;
   var ctx = canvas.getContext('2d');
-  ctx.translate(canvas.width, 0);
+  ctx.translate(srcW, 0);
   ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
+  var dataUrl = canvas.toDataURL('image/jpeg', 1.0);
   boothPhotos[idx] = dataUrl;
   var frame = document.getElementById('booth-frame-' + idx);
   frame.innerHTML = '<img src="' + dataUrl + '" alt="photo ' + (idx + 1) + '">';
-  frame.querySelector('img').style.transform = 'none';
 }
 
-function boothDownload() {
-  if (boothPhotos.length < 4) return;
-  var frameW = 256, frameH = 192, gap = 4, padH = 12, padV = 12, footerH = 36;
-  var totalW = frameW + padH * 2;
-  var totalH = padV + (frameH + gap) * 4 - gap + footerH + padV;
+function boothDrawBubble(ctx, msg, x, y, s) {
+  if (!msg) return;
+  var fontSize = 13 * s;
+  var padX = 14 * s, padY = 10 * s;
+  var radius = 14 * s;
+  var tailSize = 8 * s;
+  ctx.font = '600 ' + fontSize + 'px -apple-system, sans-serif';
+  // 줄바꿈 처리
+  var maxW = 200 * s;
+  var words = msg.split('');
+  var lines = [], line = '';
+  for (var i = 0; i < words.length; i++) {
+    var test = line + words[i];
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = words[i]; }
+    else { line = test; }
+  }
+  if (line) lines.push(line);
+  var lineH = fontSize * 1.5;
+  var bw = 0;
+  lines.forEach(function(l) { bw = Math.max(bw, ctx.measureText(l).width); });
+  bw += padX * 2;
+  var bh = lineH * lines.length + padY * 2;
+  // 말풍선 배경
+  ctx.save();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + bw - radius, y);
+  ctx.quadraticCurveTo(x + bw, y, x + bw, y + radius);
+  ctx.lineTo(x + bw, y + bh - radius);
+  ctx.quadraticCurveTo(x + bw, y + bh, x + bw - radius, y + bh);
+  ctx.lineTo(x + radius * 2 + tailSize, y + bh);
+  // 꼬리 (왼쪽 아래)
+  ctx.lineTo(x + radius, y + bh + tailSize);
+  ctx.lineTo(x + radius, y + bh);
+  ctx.lineTo(x + radius, y + bh);
+  ctx.quadraticCurveTo(x, y + bh, x, y + bh - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.shadowColor = 'rgba(0,0,0,0.25)';
+  ctx.shadowBlur = 12 * s;
+  ctx.shadowOffsetY = 4 * s;
+  ctx.fill();
+  ctx.restore();
+  // 텍스트
+  ctx.fillStyle = '#111111';
+  ctx.font = '600 ' + fontSize + 'px -apple-system, sans-serif';
+  ctx.textAlign = 'left';
+  lines.forEach(function(l, li) {
+    ctx.fillText(l, x + padX, y + padY + fontSize + li * lineH);
+  });
+}
+
+function boothBuildCanvas(cb) {
+  var fW = OUT_FRAME_W, fH = OUT_FRAME_H;
+  var pad = OUT_PAD, gap = OUT_GAP, foot = OUT_FOOTER;
+  var totalW = OUT_W, totalH = OUT_H;
+  // 1열 세로 스트립
+  var positions = [
+    { x: pad, y: pad },
+    { x: pad, y: pad + (fH + gap) },
+    { x: pad, y: pad + (fH + gap) * 2 },
+    { x: pad, y: pad + (fH + gap) * 3 }
+  ];
   var canvas = document.getElementById('booth-canvas');
-  canvas.width = totalW;
+  canvas.width  = totalW;
   canvas.height = totalH;
   var ctx = canvas.getContext('2d');
   ctx.fillStyle = '#111';
@@ -348,21 +516,76 @@ function boothDownload() {
   boothPhotos.forEach(function(src, i) {
     var img = new Image();
     img.onload = function() {
-      var y = padV + i * (frameH + gap);
-      ctx.drawImage(img, padH, y, frameW, frameH);
+      var pos = positions[i];
+      ctx.drawImage(img, pos.x, pos.y, fW, fH);
       loaded++;
       if (loaded === 4) {
         ctx.fillStyle = '#888';
-        ctx.font = '700 11px sans-serif';
-        ctx.letterSpacing = '2px';
+        ctx.font = '700 26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Things on the axis — 2026 SNUT', totalW / 2, totalH - 14);
-        var a = document.createElement('a');
-        a.download = 'photobooth_2026_snut.jpg';
-        a.href = canvas.toDataURL('image/jpeg', 0.95);
-        a.click();
+        ctx.fillText('Things on the axis — 2026 SNUT', totalW / 2, totalH - 24);
+        var msg = (document.getElementById('booth-msg-input').value || '').trim();
+        if (msg && _bubblePos.y !== null) {
+          var previewWrap = document.querySelector('.booth-strip-wrap');
+          var previewW = previewWrap ? previewWrap.offsetWidth  : 200;
+          var previewH = previewWrap ? previewWrap.offsetHeight : 200;
+          var scaleX = totalW / previewW;
+          var scaleY = totalH / previewH;
+          boothDrawBubble(ctx, msg, _bubblePos.x * scaleX, _bubblePos.y * scaleY, totalW / 800);
+        }
+        cb(canvas);
       }
     };
     img.src = src;
   });
+}
+
+function boothShowQR() {
+  if (boothPhotos.length < 4) return;
+  var qrBtn = document.getElementById('booth-qr-btn');
+  qrBtn.disabled = true;
+  qrBtn.textContent = '업로드 중...';
+  boothBuildCanvas(function(canvas) {
+    canvas.toBlob(function(blob) {
+      var form = new FormData();
+      form.append('file', blob, 'photobooth_2026_snut.jpg');
+      // file.io: CORS 지원, 10분 만료
+      fetch('https://file.io/?expires=10m', { method: 'POST', body: form })
+        .then(function(r) { return r.json(); })
+        .then(function(json) {
+          if (!json.success || !json.link) throw new Error('link 없음');
+          boothOpenQRModal(json.link);
+        })
+        .catch(function(err) {
+          console.error('file.io 실패, tmpfiles 시도:', err);
+          var form2 = new FormData();
+          form2.append('file', blob, 'photobooth_2026_snut.jpg');
+          return fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: form2 })
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+              var url = json.data && json.data.url;
+              if (!url) throw new Error('url 없음');
+              boothOpenQRModal(url.replace('tmpfiles.org/', 'tmpfiles.org/dl/'));
+            });
+        })
+        .catch(function() {
+          alert('업로드에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        })
+        .finally(function() {
+          qrBtn.disabled = false;
+          qrBtn.textContent = '↗ QR로 받기 — Save';
+        });
+    }, 'image/jpeg', 0.95);
+  });
+}
+
+function boothOpenQRModal(url) {
+  var qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=' + encodeURIComponent(url);
+  document.getElementById('booth-qr-img').src = qrImgUrl;
+  document.getElementById('booth-qr-link').href = url;
+  document.getElementById('booth-qr-modal').classList.add('show');
+}
+
+function boothCloseQR() {
+  document.getElementById('booth-qr-modal').classList.remove('show');
 }

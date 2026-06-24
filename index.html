@@ -200,13 +200,13 @@
 
 <!-- MESSAGE -->
 <div id="page-message" class="page">
-  <div class="page-header">
+  <div class="booth-page-header">
     <h2 class="page-title">Message</h2>
     <span class="page-sub">포토부스 — Photo Booth</span>
   </div>
 
   <div class="booth-wrap">
-    <!-- 왼쪽: 카메라 프리뷰 -->
+    <!-- 왼쪽: 카메라 프리뷰 + 컨트롤 + 메시지 -->
     <div class="booth-left">
       <div class="booth-cam-box">
         <video id="booth-video" autoplay playsinline muted></video>
@@ -214,21 +214,51 @@
       </div>
       <div class="booth-controls">
         <button class="booth-start-btn" id="booth-start-btn" onclick="boothStart()">촬영 시작 — Start</button>
-        <p class="booth-hint" id="booth-hint">버튼을 누르면 3초 카운트다운 후 4컷을 연속 촬영합니다</p>
+        <p class="booth-hint" id="booth-hint">버튼을 누르면 3초 카운트다운 후 4컷을 촬영합니다</p>
+      </div>
+      <!-- 메시지 입력 -->
+      <div class="booth-msg-area">
+        <div class="booth-msg-top">
+          <div class="booth-msg-label">💬 메시지 — 사진에 말풍선으로 합성됩니다</div>
+        </div>
+        <!-- 라이브 말풍선 미리보기 -->
+        <div class="booth-bubble-live-wrap" id="booth-bubble-live-wrap" style="display:none">
+          <div class="booth-bubble-live" id="booth-bubble-live"></div>
+        </div>
+        <textarea id="booth-msg-input" class="booth-msg-input" rows="2" maxlength="60"
+          placeholder="남기고 싶은 말을 적어보세요 (최대 60자)"
+          oninput="boothUpdateBubble()"></textarea>
+        <div class="booth-msg-hint" id="booth-msg-hint-drag" style="display:none">오른쪽 사진에서 말풍선을 드래그해 위치를 조정하세요</div>
       </div>
     </div>
 
-    <!-- 오른쪽: 결과 스트립 -->
+    <!-- 오른쪽: QR버튼 + 스트립 -->
     <div class="booth-right">
-      <div class="booth-strip" id="booth-strip">
-        <div class="booth-frame" id="booth-frame-0"><span class="booth-frame-num">1</span></div>
-        <div class="booth-frame" id="booth-frame-1"><span class="booth-frame-num">2</span></div>
-        <div class="booth-frame" id="booth-frame-2"><span class="booth-frame-num">3</span></div>
-        <div class="booth-frame" id="booth-frame-3"><span class="booth-frame-num">4</span></div>
-        <div class="booth-strip-footer">Things on the axis — 2026 SNUT</div>
+      <button class="booth-qr-btn" id="booth-qr-btn" onclick="boothShowQR()" disabled>↗ QR로 받기 — Save</button>
+      <div class="booth-strip-wrap">
+        <div class="booth-strip" id="booth-strip">
+          <div class="booth-frame" id="booth-frame-0"><span class="booth-frame-num">1</span></div>
+          <div class="booth-frame" id="booth-frame-1"><span class="booth-frame-num">2</span></div>
+          <div class="booth-frame" id="booth-frame-2"><span class="booth-frame-num">3</span></div>
+          <div class="booth-frame" id="booth-frame-3"><span class="booth-frame-num">4</span></div>
+          <div class="booth-strip-footer">Things on the axis — 2026 SNUT</div>
+        </div>
+        <!-- 말풍선 오버레이 -->
+        <div class="booth-bubble-overlay" id="booth-bubble-overlay" style="display:none">
+          <div class="booth-bubble" id="booth-bubble-text"></div>
+        </div>
       </div>
       <canvas id="booth-canvas" style="display:none"></canvas>
-      <button class="booth-dl-btn" id="booth-dl-btn" onclick="boothDownload()" disabled>↓ 다운로드 — Download</button>
+    </div>
+  </div>
+
+  <!-- QR 모달 -->
+  <div class="booth-qr-modal" id="booth-qr-modal" onclick="boothCloseQR()">
+    <div class="booth-qr-box" onclick="event.stopPropagation()">
+      <div class="booth-qr-label">QR코드를 스캔해 사진을 저장하세요<br><span>약 10분 후 링크가 만료됩니다</span></div>
+      <img id="booth-qr-img" src="" alt="QR Code">
+      <a id="booth-qr-link" href="#" target="_blank" class="booth-qr-direct">→ 직접 링크 열기</a>
+      <button class="booth-qr-close" onclick="boothCloseQR()">닫기</button>
     </div>
   </div>
 
@@ -238,8 +268,8 @@
   </footer>
 </div>
 
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=3">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="main.js"></script>
+<script src="main.js?v=3"></script>
 </body>
 </html>
