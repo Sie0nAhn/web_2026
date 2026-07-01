@@ -48,7 +48,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     renderGrid();
                     renderWorks('all');
                     renderBooth();
-                    renderMsgs();
                 }
             });
         })
@@ -134,7 +133,7 @@ function openWorkDirect(dIdx, wIdx) {
   document.getElementById('designer-detail').classList.remove('active');
   document.getElementById('work-detail').classList.add('active');
   document.getElementById('wd-title').textContent = w.workTitle;
-  document.getElementById('wd-desc').textContent = d.kr+' 디자이너의 졸업 작품입니다. '+(d.intro||'')+' Things on the axis 졸업전시를 위해 제작되었습니다.';
+  document.getElementById('wd-desc').textContent = d.kr+' 디자이너의 졸업 작품입니다. '+(d.intro||'')+' Captcha! 졸업전시를 위해 제작되었습니다.';
   document.getElementById('wd-by').textContent = d.kr+' / '+d.en;
   document.getElementById('wd-cat2').textContent = w.category;
   document.getElementById('wd-dlink').onclick = function(){ openDesigner(dIdx); };
@@ -193,24 +192,6 @@ function renderBooth() {
   document.getElementById('booth-map').innerHTML = html;
 }
 
-var messages = [
-  {name:'김민준',affil:'SNUT 22학번',text:'정말 멋진 작품들이 가득하네요. 졸업을 진심으로 축하드립니다!',date:'2026.11.07'},
-  {name:'이지현',affil:'방문객',text:'Things on the axis라는 제목이 너무 좋아요. 각자의 축 위에서 빛나는 디자이너들을 응원합니다.',date:'2026.11.07'},
-  {name:'박교수',affil:'서울과기대 교수',text:'4년간의 노력이 느껴지는 전시입니다. 모두 수고 많았습니다.',date:'2026.11.08'}
-];
-
-function renderMsgs() {
-  var html = '';
-  for(var i=0; i<messages.length; i++){
-    var m = messages[i];
-    html += '<div class="msg-item">'
-      +'<div><div class="msg-name">'+m.name+'</div>'
-      +'<div class="msg-date">'+(m.affil?m.affil+' · ':'')+m.date+'</div></div>'
-      +'<div class="msg-text">'+m.text+'</div>'
-      +'</div>';
-  }
-  document.getElementById('msg-list').innerHTML = html;
-}
 
 /* ── 캐러셀 ── */
 var _carImgs = [];
@@ -523,7 +504,7 @@ function boothBuildCanvas(cb) {
         ctx.fillStyle = '#888';
         ctx.font = '700 26px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Things on the axis — 2026 SNUT', totalW / 2, totalH - 24);
+        ctx.fillText('Captcha! — 2026 SNUT', totalW / 2, totalH - 24);
         var msg = (document.getElementById('booth-msg-input').value || '').trim();
         if (msg && _bubblePos.y !== null) {
           var previewWrap = document.querySelector('.booth-strip-wrap');
