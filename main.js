@@ -244,12 +244,100 @@ var boothStream = null;
 var boothPhotos = [];
 var boothRunning = false;
 
+/* ── 뷰티 필터 ── */
+var _bPrevW = 640, _bPrevH = 360;
+var _bTmpC, _bTmpCtx, _bPrevCtx, _bAnimId, _bLUT;
+
+function _buildBeautyLUT(w, h) {
+  var lut = new Float32Array(w * h * 2);
+  var cx = w / 2, faceCY = h * 0.45;
+  // 세로 가우시안: 얼굴 높이 근처에서만 슬리밍, 위아래로 자연스럽게 감쇠
+  var slimSigY = h * 0.32, slimStr = 0.025;
+  // 가로 가우시안 추가: 프레임 가장자리 수평으로도 감쇠 → 사이드 이동 시 경계 없음
+  var slimSigX = w * 0.42;
+  var eyeCx = cx, eyeCy = h * 0.38, eyeR = Math.min(w, h) * 0.20, eyeStr = 0.09;
+  for (var dy = 0; dy < h; dy++) {
+    for (var dx = 0; dx < w; dx++) {
+      var dCX = dx - cx;
+      // 수직+수평 가우시안으로 워프 강도 결정 → 경계 없는 자연스러운 감쇠
+      var gY = Math.exp(-((dy - faceCY) * (dy - faceCY)) / (2 * slimSigY * slimSigY));
+      var gX = Math.exp(-(dCX * dCX) / (2 * slimSigX * slimSigX));
+      var slimG = gY * gX;
+      var sx = cx + dCX * (1 + slimStr * slimG);
+      var sy = dy;
+      // 눈 확대: cosine 감쇠로 경계 부드럽게
+      var edx = sx - eyeCx, edy = sy - eyeCy;
+      var ed = Math.sqrt(edx * edx + edy * edy);
+      if (ed < eyeR && ed > 0) {
+        var cosFade = 0.5 * (1 + Math.cos(Math.PI * ed / eyeR)); // 중심→가장자리 cosine 감쇠
+        sx -= edx * eyeStr * cosFade;
+        sy -= edy * eyeStr * cosFade;
+      }
+      var i = (dy * w + dx) * 2;
+      lut[i]   = Math.max(0, Math.min(w - 1, sx));
+      lut[i+1] = Math.max(0, Math.min(h - 1, sy));
+    }
+  }
+  return lut;
+}
+
+function _applyWarp(src, dst, lut, w, h) {
+  // 고정 마스크 제거: LUT 자체의 가우시안 감쇠가 경계를 자연스럽게 처리
+  for (var i = 0; i < w * h; i++) {
+    var di = i * 4;
+    var sx = lut[i*2], sy = lut[i*2+1];
+    var x0=sx|0, y0=sy|0, x1=Math.min(w-1,x0+1), y1=Math.min(h-1,y0+1);
+    var fx=sx-x0, fy=sy-y0;
+    var i00=(y0*w+x0)*4,i10=(y0*w+x1)*4,i01=(y1*w+x0)*4,i11=(y1*w+x1)*4;
+    for (var c=0;c<3;c++) {
+      dst[di+c]=(src[i00+c]*(1-fx)*(1-fy)+src[i10+c]*fx*(1-fy)+
+                 src[i01+c]*(1-fx)*fy+src[i11+c]*fx*fy)|0;
+    }
+    dst[di+3]=255;
+  }
+}
+
+function _boothLoop() {
+  var video = document.getElementById('booth-video');
+  if (boothStream && video.readyState >= 2) {
+    var w = _bPrevW, h = _bPrevH;
+    var vw = video.videoWidth || w, vh = video.videoHeight || h;
+    var tRatio = w / h, sRatio = vw / vh;
+    var sx, sy, sw, sh;
+    if (sRatio > tRatio) { sh = vh; sw = Math.round(vh * tRatio); sx = Math.round((vw-sw)/2); sy = 0; }
+    else                 { sw = vw; sh = Math.round(vw / tRatio); sx = 0; sy = Math.round((vh-sh)/2); }
+    _bTmpCtx.save();
+    _bTmpCtx.translate(w, 0); _bTmpCtx.scale(-1, 1);
+    _bTmpCtx.drawImage(video, sx, sy, sw, sh, 0, 0, w, h);
+    _bTmpCtx.restore();
+    var src = _bTmpCtx.getImageData(0, 0, w, h);
+    var dst = new ImageData(w, h);
+    _applyWarp(src.data, dst.data, _bLUT, w, h);
+    _bPrevCtx.putImageData(dst, 0, 0);
+  }
+  _bAnimId = requestAnimationFrame(_boothLoop);
+}
+
+function _boothStartBeauty() {
+  var w = _bPrevW, h = _bPrevH;
+  _bTmpC = document.createElement('canvas');
+  _bTmpC.width = w; _bTmpC.height = h;
+  _bTmpCtx = _bTmpC.getContext('2d', { willReadFrequently: true });
+  var prev = document.getElementById('booth-preview');
+  prev.width = w; prev.height = h;
+  _bPrevCtx = prev.getContext('2d');
+  _bLUT = _buildBeautyLUT(w, h);
+  if (_bAnimId) cancelAnimationFrame(_bAnimId);
+  _boothLoop();
+}
+
 function boothInitCam() {
   if (boothStream) return Promise.resolve();
   return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
     .then(function(stream) {
       boothStream = stream;
       document.getElementById('booth-video').srcObject = stream;
+      _boothStartBeauty();
     });
 }
 
@@ -397,26 +485,43 @@ function boothCapture(idx) {
   var video = document.getElementById('booth-video');
   var vw = video.videoWidth  || 1280;
   var vh = video.videoHeight || 720;
-  // 카메라 프리뷰(16:9)와 동일하게 크롭
   var targetRatio = 16 / 9;
   var srcRatio = vw / vh;
   var srcX, srcY, srcW, srcH;
   if (srcRatio > targetRatio) {
-    // 가로가 더 넓음 → 좌우 크롭
     srcH = vh; srcW = Math.round(vh * targetRatio);
     srcX = Math.round((vw - srcW) / 2); srcY = 0;
   } else {
-    // 세로가 더 길음 → 상하 크롭
     srcW = vw; srcH = Math.round(vw / targetRatio);
     srcX = 0; srcY = Math.round((vh - srcH) / 2);
   }
+  // 캡처 해상도 (OUT_FRAME_W x OUT_FRAME_H)
+  var cW = OUT_FRAME_W, cH = OUT_FRAME_H;
+  var tmpC = document.createElement('canvas');
+  tmpC.width = cW; tmpC.height = cH;
+  var tmpCtx = tmpC.getContext('2d', { willReadFrequently: true });
+  tmpCtx.save();
+  tmpCtx.translate(cW, 0); tmpCtx.scale(-1, 1);
+  tmpCtx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, cW, cH);
+  tmpCtx.restore();
+  // 뷰티 워프 적용
+  var capLUT = _buildBeautyLUT(cW, cH);
+  var src = tmpCtx.getImageData(0, 0, cW, cH);
+  var dst = new ImageData(cW, cH);
+  _applyWarp(src.data, dst.data, capLUT, cW, cH);
+  // 피부 보정: 워프 결과 + 살짝 블러 블렌드
   var canvas = document.createElement('canvas');
-  canvas.width = srcW; canvas.height = srcH;
+  canvas.width = cW; canvas.height = cH;
   var ctx = canvas.getContext('2d');
-  ctx.translate(srcW, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(video, srcX, srcY, srcW, srcH, 0, 0, srcW, srcH);
-  var dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+  var warpC = document.createElement('canvas');
+  warpC.width = cW; warpC.height = cH;
+  warpC.getContext('2d').putImageData(dst, 0, 0);
+  ctx.drawImage(warpC, 0, 0);           // 선명한 레이어 100%
+  ctx.filter = 'blur(1.2px) contrast(1.07)';
+  ctx.globalAlpha = 0.28;
+  ctx.drawImage(warpC, 0, 0);           // 블러 레이어 28% (피부 부드럽게)
+  ctx.globalAlpha = 1; ctx.filter = 'none';
+  var dataUrl = canvas.toDataURL('image/jpeg', 0.95);
   boothPhotos[idx] = dataUrl;
   var frame = document.getElementById('booth-frame-' + idx);
   frame.innerHTML = '<img src="' + dataUrl + '" alt="photo ' + (idx + 1) + '">';

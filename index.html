@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Captcha! — 2026 서울과학기술대학교 시각디자인 졸업전시</title>
+<meta property="og:title" content="Captcha! — 2026 서울과학기술대학교 시각디자인 졸업전시">
+<meta property="og:description" content="제44회 서울과학기술대학교 시각디자인전공 졸업전시">
+<meta property="og:url" content="https://sie0nahn.github.io/web_2026/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Captcha! — 2026 서울과학기술대학교 시각디자인 졸업전시">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preload" as="style" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" onload="this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"></noscript>
@@ -213,7 +219,8 @@
     <!-- 왼쪽: 카메라 프리뷰 + 컨트롤 + 메시지 -->
     <div class="booth-left">
       <div class="booth-cam-box">
-        <video id="booth-video" autoplay playsinline muted></video>
+        <video id="booth-video" autoplay playsinline muted style="display:none"></video>
+        <canvas id="booth-preview"></canvas>
         <div class="booth-countdown" id="booth-countdown"></div>
       </div>
       <div class="booth-controls">
